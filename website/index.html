@@ -12,14 +12,11 @@
 </head>
 <body>
 
-  <!-- Grain texture overlay -->
   <div class="grain" aria-hidden="true"></div>
 
-  <!-- Atmospheric orbs (background layer) -->
   <div class="atmos" aria-hidden="true">
     <div class="atmos-orb atmos-orb--amber"></div>
     <div class="atmos-orb atmos-orb--violet"></div>
-    <div class="atmos-orb atmos-orb--teal"></div>
   </div>
 
   <!-- Navigation -->
@@ -28,12 +25,12 @@
       <a href="#hero" class="nav-mark" aria-label="Home">
         <svg class="diamond-icon" viewBox="0 0 100 140" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
           <defs>
-            <filter id="glow-sm">
+            <filter id="glow-nav">
               <feGaussianBlur stdDeviation="3" result="blur"/>
               <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
             </filter>
           </defs>
-          <polygon filter="url(#glow-sm)" points="50,4 92,46 50,136 8,46" stroke="currentColor" stroke-width="2.5"/>
+          <polygon filter="url(#glow-nav)" points="50,4 92,46 50,136 8,46" stroke="currentColor" stroke-width="2.5"/>
           <line x1="8" y1="46" x2="92" y2="46" stroke="currentColor" stroke-width="1.5"/>
           <line x1="50" y1="4" x2="28" y2="46" stroke="currentColor" stroke-width="1.5"/>
           <line x1="50" y1="4" x2="72" y2="46" stroke="currentColor" stroke-width="1.5"/>
@@ -43,7 +40,6 @@
       </a>
       <ul class="nav-links">
         <li><a href="#services">Services</a></li>
-        <li><a href="#work">Work</a></li>
         <li><a href="#about">About</a></li>
         <li><a href="#contact">Contact</a></li>
       </ul>
@@ -54,37 +50,43 @@
 
     <!-- ===================== HERO ===================== -->
     <section id="hero" class="hero">
-
-      <div class="hero-content" data-reveal>
-        <div class="hero-mark">
-          <svg class="diamond-hero" viewBox="0 0 100 140" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-            <defs>
-              <filter id="glow-hero" x="-50%" y="-50%" width="200%" height="200%">
-                <feGaussianBlur stdDeviation="5" result="blur"/>
-                <feMerge>
-                  <feMergeNode in="blur"/>
-                  <feMergeNode in="blur"/>
-                  <feMergeNode in="SourceGraphic"/>
-                </feMerge>
-              </filter>
-            </defs>
-            <polygon filter="url(#glow-hero)" points="50,4 92,46 50,136 8,46" stroke="currentColor" stroke-width="2"/>
-            <line x1="8" y1="46" x2="92" y2="46" stroke="currentColor" stroke-width="1.25"/>
-            <line x1="50" y1="4" x2="28" y2="46" stroke="currentColor" stroke-width="1.25"/>
-            <line x1="50" y1="4" x2="72" y2="46" stroke="currentColor" stroke-width="1.25"/>
-            <line x1="28" y1="46" x2="50" y2="136" stroke="currentColor" stroke-width="1.25"/>
-            <line x1="72" y1="46" x2="50" y2="136" stroke="currentColor" stroke-width="1.25"/>
-          </svg>
-        </div>
-
-        <h1 class="hero-name" data-text="Daniel Okonek">Daniel<br>Okonek</h1>
-        <p class="hero-tagline">Production &amp; Song Services</p>
-        <a href="#services" class="hero-cta">View Services</a>
+      <div class="hero-bg-mark" aria-hidden="true">
+        <svg viewBox="0 0 100 140" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <polygon points="50,4 92,46 50,136 8,46" stroke="currentColor" stroke-width="0.3"/>
+          <line x1="8" y1="46" x2="92" y2="46" stroke="currentColor" stroke-width="0.3"/>
+          <line x1="50" y1="4" x2="28" y2="46" stroke="currentColor" stroke-width="0.3"/>
+          <line x1="50" y1="4" x2="72" y2="46" stroke="currentColor" stroke-width="0.3"/>
+          <line x1="28" y1="46" x2="50" y2="136" stroke="currentColor" stroke-width="0.3"/>
+          <line x1="72" y1="46" x2="50" y2="136" stroke="currentColor" stroke-width="0.3"/>
+        </svg>
       </div>
 
-      <div class="hero-scroll" aria-hidden="true">
-        <span>Scroll</span>
-        <div class="scroll-line"></div>
+      <div class="hero-content" data-reveal>
+        <div class="hero-eyebrow">
+          <svg class="diamond-sm" viewBox="0 0 100 140" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <defs>
+              <filter id="glow-hero-sm">
+                <feGaussianBlur stdDeviation="5" result="blur"/>
+                <feMerge><feMergeNode in="blur"/><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+              </filter>
+            </defs>
+            <polygon filter="url(#glow-hero-sm)" points="50,4 92,46 50,136 8,46" stroke="currentColor" stroke-width="2.5"/>
+            <line x1="8" y1="46" x2="92" y2="46" stroke="currentColor" stroke-width="1.5"/>
+            <line x1="50" y1="4" x2="28" y2="46" stroke="currentColor" stroke-width="1.5"/>
+            <line x1="50" y1="4" x2="72" y2="46" stroke="currentColor" stroke-width="1.5"/>
+            <line x1="28" y1="46" x2="50" y2="136" stroke="currentColor" stroke-width="1.5"/>
+            <line x1="72" y1="46" x2="50" y2="136" stroke="currentColor" stroke-width="1.5"/>
+          </svg>
+          <span>Production &amp; Song Services</span>
+        </div>
+        <h1 class="hero-name" data-text="Daniel Okonek">Daniel<br>Okonek</h1>
+        <a href="#services" class="hero-cta">
+          <span>Explore</span>
+          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <line x1="12" y1="4" x2="12" y2="20" stroke="currentColor" stroke-width="1.25" stroke-linecap="round"/>
+            <polyline points="6,14 12,20 18,14" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </a>
       </div>
     </section>
 
@@ -115,114 +117,115 @@
     <!-- ===================== SERVICES ===================== -->
     <section id="services" class="services">
       <div class="container">
+
         <div class="section-header" data-reveal>
           <span class="section-label">Services</span>
           <div class="section-rule"></div>
         </div>
 
         <!-- Production & Song Services -->
-        <div class="services-group" data-reveal>
-          <div class="services-group-head">
-            <h2 class="services-group-title">Production &amp; Song Services</h2>
-            <p class="services-group-note">Per-song pricing &nbsp;·&nbsp; Royalties confirmed in writing &nbsp;·&nbsp; Album &amp; retainer rates available on request</p>
+        <div class="services-block" data-reveal>
+          <div class="services-block-head">
+            <h2 class="services-block-title">Production &amp; Song Services</h2>
+            <p class="services-block-note">Per-song pricing · Royalties confirmed in writing · Album &amp; retainer rates available on request</p>
           </div>
 
-          <div class="services-grid">
+          <div class="service-rows">
 
-            <div class="service-card">
-              <div class="service-card-top">
-                <span class="service-num">SERVICE 01</span>
-                <h3 class="service-name">Composition &amp;<br>Consultancy</h3>
-                <div class="service-price-block">
+            <div class="service-row">
+              <span class="service-row-num">01</span>
+              <div class="service-row-body">
+                <div class="service-row-head">
+                  <h3 class="service-name">Composition &amp; Consultancy</h3>
                   <span class="service-price">$200 upfront</span>
-                  <span class="service-royalty">25–50% songwriting royalties (publishing split)</span>
                 </div>
+                <p class="service-royalty">25–50% songwriting royalties (publishing split)</p>
+                <ul class="service-list">
+                  <li class="inc">Collaborative or uncredited writing support</li>
+                  <li class="inc">Publishing split (25% or 50%) based on scope</li>
+                  <li class="inc">Credit handling agreed in writing before release</li>
+                  <li class="exc">Production, mixing, arrangement separate</li>
+                </ul>
               </div>
-              <ul class="service-list">
-                <li class="inc">Collaborative or uncredited writing support</li>
-                <li class="inc">Publishing split (25% or 50%) based on scope</li>
-                <li class="inc">Credit handling agreed in writing before release</li>
-                <li class="exc">Production, mixing, arrangement separate</li>
-              </ul>
             </div>
 
-            <div class="service-card">
-              <div class="service-card-top">
-                <span class="service-num">SERVICE 02</span>
-                <h3 class="service-name">Arrangement</h3>
-                <div class="service-price-block">
+            <div class="service-row">
+              <span class="service-row-num">02</span>
+              <div class="service-row-body">
+                <div class="service-row-head">
+                  <h3 class="service-name">Arrangement</h3>
                   <span class="service-price">$250 / song</span>
-                  <span class="service-royalty">No royalties — flat fee</span>
                 </div>
+                <p class="service-royalty">No royalties — flat fee</p>
+                <ul class="service-list">
+                  <li class="inc">Song structure, transitions, energy arc</li>
+                  <li class="inc">Instrument entry/exit decisions</li>
+                  <li class="inc">Optional MIDI parts; may include live tracking</li>
+                  <li class="exc">Full tracking, songwriting, publishing</li>
+                </ul>
+                <p class="service-footnote">If tracking crosses into composition, discussed upfront.</p>
               </div>
-              <ul class="service-list">
-                <li class="inc">Song structure, transitions, energy arc</li>
-                <li class="inc">Instrument entry/exit decisions</li>
-                <li class="inc">Optional MIDI parts; may include live tracking</li>
-                <li class="exc">Full tracking, songwriting, publishing</li>
-              </ul>
-              <p class="service-footnote">If tracking crosses into composition, discussed upfront.</p>
             </div>
 
-            <div class="service-card">
-              <div class="service-card-top">
-                <span class="service-num">SERVICE 03</span>
-                <h3 class="service-name">Production</h3>
-                <div class="service-price-block">
+            <div class="service-row">
+              <span class="service-row-num">03</span>
+              <div class="service-row-body">
+                <div class="service-row-head">
+                  <h3 class="service-name">Production</h3>
                   <span class="service-price">$400 / song</span>
-                  <span class="service-royalty">+ 5% backend royalties</span>
                 </div>
+                <p class="service-royalty">+ 5% backend royalties</p>
+                <ul class="service-list">
+                  <li class="inc">Sound design, instrumental additions</li>
+                  <li class="inc">Structure editing, mix-ready build</li>
+                  <li class="inc">Creative input on sonic identity</li>
+                  <li class="exc">Mixing, mastering, full arrangement</li>
+                </ul>
               </div>
-              <ul class="service-list">
-                <li class="inc">Sound design, instrumental additions</li>
-                <li class="inc">Structure editing, mix-ready build</li>
-                <li class="inc">Creative input on sonic identity</li>
-                <li class="exc">Mixing, mastering, full arrangement</li>
-              </ul>
             </div>
 
-            <div class="service-card">
-              <div class="service-card-top">
-                <span class="service-num">SERVICE 04</span>
-                <h3 class="service-name">Mixing</h3>
-                <div class="service-price-block">
+            <div class="service-row">
+              <span class="service-row-num">04</span>
+              <div class="service-row-body">
+                <div class="service-row-head">
+                  <h3 class="service-name">Mixing</h3>
                   <span class="service-price">$400 / song</span>
-                  <span class="service-royalty">No royalties — flat fee</span>
                 </div>
+                <p class="service-royalty">No royalties — flat fee</p>
+                <ul class="service-list">
+                  <li class="inc">Full EQ, compression, FX, automation</li>
+                  <li class="inc">Up to 2 revisions</li>
+                  <li class="inc">Final stereo mix in preferred format</li>
+                  <li class="exc">Comping, mastering, production changes</li>
+                </ul>
               </div>
-              <ul class="service-list">
-                <li class="inc">Full EQ, compression, FX, automation</li>
-                <li class="inc">Up to 2 revisions</li>
-                <li class="inc">Final stereo mix in preferred format</li>
-                <li class="exc">Comping, mastering, production changes</li>
-              </ul>
             </div>
 
-            <div class="service-card service-card--full">
-              <div class="service-card-top">
-                <span class="service-num">SERVICE 05</span>
-                <h3 class="service-name">The Full Build</h3>
-                <div class="service-price-block">
+            <div class="service-row service-row--featured">
+              <span class="service-row-num">05</span>
+              <div class="service-row-body">
+                <div class="service-row-head">
+                  <h3 class="service-name">The Full Build</h3>
                   <span class="service-price">$1,100 / song</span>
-                  <span class="service-royalty">+ 10% backend royalties</span>
                 </div>
+                <p class="service-royalty">+ 10% backend royalties</p>
+                <ul class="service-list">
+                  <li class="inc">Composition support if applicable</li>
+                  <li class="inc">Full arrangement &amp; production</li>
+                  <li class="inc">Mixing with up to 2 revisions</li>
+                  <li class="exc">Mastering (always separate)</li>
+                </ul>
+                <p class="service-footnote">Writing royalties apply only if writing is contributed. Backend negotiable for larger projects.</p>
               </div>
-              <ul class="service-list">
-                <li class="inc">Composition support if applicable</li>
-                <li class="inc">Full arrangement &amp; production</li>
-                <li class="inc">Mixing with up to 2 revisions</li>
-                <li class="exc">Mastering (always separate)</li>
-              </ul>
-              <p class="service-footnote">Writing royalties apply only if writing is contributed. Backend negotiable for larger projects.</p>
             </div>
 
           </div>
         </div>
 
         <!-- Additional Services -->
-        <div class="services-group" data-reveal>
-          <div class="services-group-head">
-            <h2 class="services-group-title">Additional Services</h2>
+        <div class="services-block" data-reveal>
+          <div class="services-block-head">
+            <h2 class="services-block-title">Additional Services</h2>
           </div>
           <div class="additional-grid">
 
@@ -266,44 +269,30 @@
 
           </div>
         </div>
-      </div>
-    </section>
 
-    <!-- ===================== WORK ===================== -->
-    <section id="work" class="work">
-      <div class="container">
-        <div class="section-header" data-reveal>
-          <span class="section-label">Work</span>
-          <div class="section-rule"></div>
-        </div>
-        <div class="work-placeholder" data-reveal>
-          <svg class="work-diamond" viewBox="0 0 100 140" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-            <polygon points="50,4 92,46 50,136 8,46" stroke="currentColor" stroke-width="1"/>
-            <line x1="8" y1="46" x2="92" y2="46" stroke="currentColor" stroke-width="0.75"/>
-            <line x1="50" y1="4" x2="28" y2="46" stroke="currentColor" stroke-width="0.75"/>
-            <line x1="50" y1="4" x2="72" y2="46" stroke="currentColor" stroke-width="0.75"/>
-            <line x1="28" y1="46" x2="50" y2="136" stroke="currentColor" stroke-width="0.75"/>
-            <line x1="72" y1="46" x2="50" y2="136" stroke="currentColor" stroke-width="0.75"/>
-          </svg>
-          <p class="work-label">Selected projects coming soon</p>
-        </div>
       </div>
     </section>
 
     <!-- ===================== ABOUT ===================== -->
     <section id="about" class="about">
       <div class="container">
+
         <div class="section-header" data-reveal>
           <span class="section-label">About</span>
           <div class="section-rule"></div>
         </div>
+
+        <blockquote class="about-quote" data-reveal>
+          "Music allows us to communicate emotion with a precision that no other language can emulate."
+        </blockquote>
+
         <div class="about-layout" data-reveal>
           <div class="about-left">
             <h2 class="about-name">Daniel<br>Okonek</h2>
             <div class="about-body">
-              <p>Sound is a form of knowing. Daniel Okonek has spent his career deepening that knowledge — through the stage, the studio, and the classroom — arriving at a practice rooted in intention, craft, and the quiet authority of someone who has listened very closely for a very long time.</p>
-              <p>Over 300 live performances have taken him from intimate rooms to festival stages, including sets at <em>Northern Nights</em> and <em>Dirty Bird Campout</em> — experiences that refined his ear for how music inhabits space and moves through bodies.</p>
-              <p>In the studio, Daniel works across composition, arrangement, production, and mixing, approaching each project as a collaboration toward a specific and irreducible sonic truth. As co-founder of <strong>Well Made Plays</strong> — an artist management and events company — and co-host of <strong>Sound Squeeze Creative</strong>, he remains deeply embedded in the broader ecology of independent music and creative community.</p>
+              <p>Daniel Okonek has spent his career building tools for that communication — through the stage, the studio, and the classroom — arriving at a practice rooted in intention, craft, and the quiet authority of someone who has listened very closely for a very long time.</p>
+              <p>Over 300 live performances have taken him from intimate rooms to festival stages at <em>Northern Nights / Dirty Bird Campout</em> — experiences that refined his ear for how music inhabits space and moves through bodies.</p>
+              <p>As co-founder of <strong>Well Made Plays</strong> — an artist management and events company — and co-host of <strong>Sound Squeeze</strong>, a creative retreat, Daniel works at the intersection of sound, artistry, and community.</p>
               <p>His teaching carries the same precision: one-on-one instruction in Ableton Live, built around the belief that technical mastery and artistic vision should develop together.</p>
             </div>
           </div>
@@ -314,11 +303,7 @@
                 <span class="stat-label">Live Performances</span>
               </div>
               <div class="stat">
-                <span class="stat-num">Northern Nights</span>
-                <span class="stat-label">Festival</span>
-              </div>
-              <div class="stat">
-                <span class="stat-num">Dirty Bird Campout</span>
+                <span class="stat-num">Northern Nights /<br>Dirty Bird Campout</span>
                 <span class="stat-label">Festival</span>
               </div>
               <div class="stat">
@@ -326,12 +311,13 @@
                 <span class="stat-label">Co-Founder</span>
               </div>
               <div class="stat">
-                <span class="stat-num">Sound Squeeze Creative</span>
-                <span class="stat-label">Co-Host</span>
+                <span class="stat-num">Sound Squeeze</span>
+                <span class="stat-label">Co-Host · Creative Retreat</span>
               </div>
             </div>
           </div>
         </div>
+
       </div>
     </section>
 
@@ -377,6 +363,27 @@
       </div>
     </div>
   </footer>
+
+  <!-- ===================== PERSISTENT PLAYER ===================== -->
+  <div class="player-bar" id="player-bar">
+    <button class="player-toggle" id="player-toggle" aria-label="Toggle music player" aria-expanded="false">
+      <svg class="player-diamond" viewBox="0 0 100 140" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <polygon points="50,4 92,46 50,136 8,46" stroke="currentColor" stroke-width="2.5"/>
+        <line x1="8" y1="46" x2="92" y2="46" stroke="currentColor" stroke-width="1.5"/>
+        <line x1="50" y1="4" x2="28" y2="46" stroke="currentColor" stroke-width="1.5"/>
+        <line x1="50" y1="4" x2="72" y2="46" stroke="currentColor" stroke-width="1.5"/>
+        <line x1="28" y1="46" x2="50" y2="136" stroke="currentColor" stroke-width="1.5"/>
+        <line x1="72" y1="46" x2="50" y2="136" stroke="currentColor" stroke-width="1.5"/>
+      </svg>
+      <span class="player-label">Listen</span>
+      <svg class="player-chevron" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <polyline points="18,15 12,9 6,15" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </button>
+    <div class="player-embed" id="player-embed" aria-hidden="true">
+      <iframe data-testid="embed-iframe" style="border-radius:0" src="https://open.spotify.com/embed/playlist/5n80WWnuECijZtp9xEFyql?utm_source=generator" width="100%" height="152" frameBorder="0" allowfullscreen="" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe>
+    </div>
+  </div>
 
   <script src="script.js"></script>
 </body>

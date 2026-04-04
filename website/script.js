@@ -2,40 +2,35 @@
    Daniel Okonek — Site Script
    ============================================================ */
 
-// --- Sticky nav on scroll ---
+// --- Sticky nav ---
 const header = document.getElementById('header');
 const hero   = document.getElementById('hero');
 
 if (header && hero) {
-  const navObserver = new IntersectionObserver(
-    ([entry]) => header.classList.toggle('scrolled', !entry.isIntersecting),
+  new IntersectionObserver(
+    ([e]) => header.classList.toggle('scrolled', !e.isIntersecting),
     { threshold: 0.05 }
-  );
-  navObserver.observe(hero);
+  ).observe(hero);
 }
 
-// --- Reveal animations on scroll ---
+// --- Scroll reveal ---
 const revealEls = document.querySelectorAll('[data-reveal]');
-
 if (revealEls.length) {
-  const revealObserver = new IntersectionObserver(
-    (entries) => {
-      entries.forEach((entry) => {
-        if (entry.isIntersecting) {
-          entry.target.classList.add('is-visible');
-          revealObserver.unobserve(entry.target);
-        }
-      });
-    },
-    { threshold: 0.1, rootMargin: '0px 0px -40px 0px' }
+  const io = new IntersectionObserver(
+    (entries) => entries.forEach(e => {
+      if (e.isIntersecting) {
+        e.target.classList.add('is-visible');
+        io.unobserve(e.target);
+      }
+    }),
+    { threshold: 0.08, rootMargin: '0px 0px -40px 0px' }
   );
-
-  revealEls.forEach((el) => revealObserver.observe(el));
+  revealEls.forEach(el => io.observe(el));
 }
 
-// --- Smooth scroll for anchor links ---
-document.querySelectorAll('a[href^="#"]').forEach((anchor) => {
-  anchor.addEventListener('click', function (e) {
+// --- Smooth scroll ---
+document.querySelectorAll('a[href^="#"]').forEach(a => {
+  a.addEventListener('click', function(e) {
     const target = document.querySelector(this.getAttribute('href'));
     if (target) {
       e.preventDefault();
@@ -43,3 +38,16 @@ document.querySelectorAll('a[href^="#"]').forEach((anchor) => {
     }
   });
 });
+
+// --- Persistent Spotify player toggle ---
+const playerBar    = document.getElementById('player-bar');
+const playerToggle = document.getElementById('player-toggle');
+const playerEmbed  = document.getElementById('player-embed');
+
+if (playerBar && playerToggle) {
+  playerToggle.addEventListener('click', () => {
+    const isOpen = playerBar.classList.toggle('is-open');
+    playerToggle.setAttribute('aria-expanded', isOpen);
+    if (playerEmbed) playerEmbed.setAttribute('aria-hidden', !isOpen);
+  });
+}
