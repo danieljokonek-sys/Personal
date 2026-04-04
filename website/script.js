@@ -57,6 +57,44 @@ document.querySelectorAll('.svc-head').forEach(btn => {
   });
 });
 
+// --- Video lightbox modal ---
+const vidModal       = document.getElementById('vid-modal');
+const vidModalIframe = document.getElementById('vid-modal-iframe');
+const vidModalClose  = document.getElementById('vid-modal-close');
+const vidBackdrop    = document.getElementById('vid-modal-backdrop');
+
+function openVidModal(videoId) {
+  if (!vidModal || !vidModalIframe) return;
+  vidModalIframe.src = `https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0`;
+  vidModal.classList.add('is-open');
+  vidModal.setAttribute('aria-hidden', 'false');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeVidModal() {
+  if (!vidModal || !vidModalIframe) return;
+  vidModal.classList.remove('is-open');
+  vidModal.setAttribute('aria-hidden', 'true');
+  vidModalIframe.src = '';
+  document.body.style.overflow = '';
+}
+
+document.querySelectorAll('.work-item[data-vid]').forEach(item => {
+  item.addEventListener('click', () => openVidModal(item.dataset.vid));
+  item.addEventListener('keydown', e => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      openVidModal(item.dataset.vid);
+    }
+  });
+});
+
+if (vidModalClose) vidModalClose.addEventListener('click', closeVidModal);
+if (vidBackdrop)   vidBackdrop.addEventListener('click', closeVidModal);
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && vidModal?.classList.contains('is-open')) closeVidModal();
+});
+
 // --- Persistent Spotify player toggle ---
 const playerBar    = document.getElementById('player-bar');
 const playerToggle = document.getElementById('player-toggle');
