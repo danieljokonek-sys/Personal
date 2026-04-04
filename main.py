@@ -74,6 +74,11 @@ from src.database import (
     mark_emails_labeled,
     # horizon
     get_horizon_data,
+    # snooze
+    snooze_item,
+    unsnooze_item,
+    get_snoozed_items,
+    SNOOZEABLE_TABLES,
 )
 from src.gmail_client import GmailClient, build_clients, get_send_client
 from src.calendar_client import CalendarClient
@@ -1119,6 +1124,87 @@ def followups_scan():
     config = get_config()
     init_db()
     do_detect_follow_ups(config)
+
+
+# ── Snooze ───────────────────────────────────────────────────────────────────
+
+SNOOZE_TABLE_CHOICES = sorted(SNOOZEABLE_TABLES)
+
+
+@cli.group()
+def snooze():
+    """Snooze items so they stop appearing until a future date."""
+    pass
+
+
+@snooze.command(name="item")
+@click.argument("table", type=click.Choice(SNOOZE_TABLE_CHOICES))
+@click.argument("item_id", type=int)
+@click.argument("until")
+def snooze_cmd(table, item_id, until):
+    """Snooze an item until a date or duration.
+
+    \b
+    UNTIL can be:
+      3d          — snooze for 3 days
+      1w          — snooze for 1 week
+      2026-05-01  — snooze until a specific date
+
+    \b
+    Examples:
+      snooze item action_items 5 3d
+      snooze item deadlines 2 1w
+      snooze item tasks 1 2026-04-20
+      snooze item follow_ups 3 5d
+    """
+    init_db()
+    try:
+        snooze_date = snooze_item(table, item_id, until)
+        console.print(f"[green]{table} #{item_id} snoozed until {snooze_date}[/green]")
+        console.print("[dim]It won't appear in status, horizon, or digests until then.[/dim]")
+    except ValueError as e:
+        console.print(f"[red]Invalid duration: {e}[/red]")
+        console.print("Use format: 3d, 1w, or YYYY-MM-DD")
+
+
+@snooze.command(name="wake")
+@click.argument("table", type=click.Choice(SNOOZE_TABLE_CHOICES))
+@click.argument("item_id", type=int)
+def snooze_wake(table, item_id):
+    """Wake a snoozed item immediately so it reappears."""
+    init_db()
+    unsnooze_item(table, item_id)
+    console.print(f"[green]{table} #{item_id} is now active again.[/green]")
+
+
+@snooze.command(name="list")
+def snooze_list():
+    """Show all currently snoozed items."""
+    init_db()
+    items = get_snoozed_items()
+    if not items:
+        console.print("Nothing is snoozed.")
+        return
+
+    table = Table(title="Snoozed Items")
+    table.add_column("Table")
+    table.add_column("ID", style="dim", width=4)
+    table.add_column("Item")
+    table.add_column("Snoozed Until")
+    table.add_column("State")
+
+    for item in items:
+        state = item["snooze_state"]
+        state_fmt = f"[dim]expired — run 'wake' to restore[/dim]" if state == "expired" else "[yellow]sleeping[/yellow]"
+        table.add_row(
+            item["source_table"],
+            str(item["id"]),
+            (item.get("label") or "")[:50],
+            item["snoozed_until"],
+            state_fmt,
+        )
+    console.print(table)
+    console.print("\n[dim]Use 'snooze wake <table> <id>' to wake an item early.[/dim]")
 
 
 if __name__ == "__main__":

@@ -113,15 +113,26 @@ def init_db():
 
 def _migrate(conn: sqlite3.Connection):
     """Add columns/tables that may be missing from older database versions."""
-    existing = {row[1] for row in conn.execute("PRAGMA table_info(emails)")}
+    existing_email = {row[1] for row in conn.execute("PRAGMA table_info(emails)")}
     migrations = [
         ("emails", "account_email", "TEXT"),
         ("emails", "is_sms_forward", "INTEGER DEFAULT 0"),
         ("emails", "gmail_labeled", "INTEGER DEFAULT 0"),
     ]
     for table, col, col_def in migrations:
-        if col not in existing:
+        if col not in existing_email:
             conn.execute(f"ALTER TABLE {table} ADD COLUMN {col} {col_def}")
+
+    # Add snoozed_until to all item tables
+    snooze_tables = ["action_items", "deadlines", "financial_items", "agreements",
+                     "tasks", "follow_ups"]
+    for table in snooze_tables:
+        try:
+            cols = {row[1] for row in conn.execute(f"PRAGMA table_info({table})")}
+            if "snoozed_until" not in cols:
+                conn.execute(f"ALTER TABLE {table} ADD COLUMN snoozed_until TEXT")
+        except Exception:
+            pass
 
     # Create calendar_events if it doesn't exist (older DBs won't have it)
     conn.executescript("""
@@ -383,6 +394,7 @@ def get_pending_deadlines(days_ahead: int = 14) -> list[dict]:
            WHERE d.status = 'pending'
              AND d.due_date IS NOT NULL
              AND d.due_date <= date('now', '+' || ? || ' days')
+             AND (d.snoozed_until IS NULL OR d.snoozed_until <= date('now'))
            ORDER BY d.due_date ASC""",
         (days_ahead,),
     ).fetchall()
@@ -392,21 +404,24 @@ def get_pending_deadlines(days_ahead: int = 14) -> list[dict]:
 
 def get_pending_financial(direction: Optional[str] = None) -> list[dict]:
     conn = get_connection()
+    snooze_filter = "AND (f.snoozed_until IS NULL OR f.snoozed_until <= date('now'))"
     if direction:
         rows = conn.execute(
-            """SELECT f.*, e.subject as email_subject, e.sender as email_sender
+            f"""SELECT f.*, e.subject as email_subject, e.sender as email_sender
                FROM financial_items f
                LEFT JOIN emails e ON f.email_id = e.id
                WHERE f.status = 'pending' AND f.direction = ?
+               {snooze_filter}
                ORDER BY f.due_date ASC NULLS LAST""",
             (direction,),
         ).fetchall()
     else:
         rows = conn.execute(
-            """SELECT f.*, e.subject as email_subject, e.sender as email_sender
+            f"""SELECT f.*, e.subject as email_subject, e.sender as email_sender
                FROM financial_items f
                LEFT JOIN emails e ON f.email_id = e.id
                WHERE f.status = 'pending'
+               {snooze_filter}
                ORDER BY f.direction, f.due_date ASC NULLS LAST"""
         ).fetchall()
     conn.close()
@@ -420,6 +435,7 @@ def get_active_agreements() -> list[dict]:
            FROM agreements a
            LEFT JOIN emails e ON a.email_id = e.id
            WHERE a.status = 'active'
+             AND (a.snoozed_until IS NULL OR a.snoozed_until <= date('now'))
            ORDER BY a.created_at DESC"""
     ).fetchall()
     conn.close()
@@ -433,6 +449,7 @@ def get_pending_actions() -> list[dict]:
            FROM action_items a
            LEFT JOIN emails e ON a.email_id = e.id
            WHERE a.status = 'pending'
+             AND (a.snoozed_until IS NULL OR a.snoozed_until <= date('now'))
            ORDER BY a.priority DESC, a.due_date ASC NULLS LAST"""
     ).fetchall()
     conn.close()
@@ -712,6 +729,7 @@ def get_pending_tasks() -> list[dict]:
     conn = get_connection()
     rows = conn.execute(
         """SELECT * FROM tasks WHERE status = 'pending'
+             AND (snoozed_until IS NULL OR snoozed_until <= date('now'))
            ORDER BY
              CASE priority WHEN 'high' THEN 0 WHEN 'medium' THEN 1 ELSE 2 END,
              due_date ASC NULLS LAST,
@@ -787,6 +805,7 @@ def get_pending_follow_ups() -> list[dict]:
     conn = get_connection()
     rows = conn.execute(
         """SELECT * FROM follow_ups WHERE status = 'pending'
+             AND (snoozed_until IS NULL OR snoozed_until <= date('now'))
            ORDER BY days_waiting DESC"""
     ).fetchall()
     conn.close()
@@ -805,6 +824,7 @@ def get_stale_action_items(days: int = 3) -> list[dict]:
            LEFT JOIN emails e ON a.email_id = e.id
            WHERE a.status = 'pending'
              AND a.created_at <= datetime('now', '-' || ? || ' days')
+             AND (a.snoozed_until IS NULL OR a.snoozed_until <= date('now'))
            ORDER BY a.created_at ASC""",
         (days,),
     ).fetchall()
@@ -887,3 +907,87 @@ def get_horizon_data(days_ahead: int = 14) -> dict:
         "follow_ups": follow_ups,
         "tasks": tasks,
     }
+
+
+# ── Snooze ────────────────────────────────────────────────────────────────────
+
+SNOOZEABLE_TABLES = {
+    "action_items", "deadlines", "financial_items",
+    "agreements", "tasks", "follow_ups",
+}
+
+
+def _parse_snooze_until(duration: str) -> str:
+    """Parse a snooze duration like '3d', '1w', '2026-05-01' into a date string."""
+    duration = duration.strip().lower()
+    today = date.today()
+    if duration.endswith("d"):
+        days = int(duration[:-1])
+        return (today + __import__("datetime").timedelta(days=days)).isoformat()
+    if duration.endswith("w"):
+        weeks = int(duration[:-1])
+        return (today + __import__("datetime").timedelta(weeks=weeks)).isoformat()
+    # Assume it's already a YYYY-MM-DD date
+    date.fromisoformat(duration)  # validate
+    return duration
+
+
+def snooze_item(table: str, item_id: int, until: str):
+    """Snooze an item until a given date. `until` can be '3d', '1w', or 'YYYY-MM-DD'."""
+    if table not in SNOOZEABLE_TABLES:
+        raise ValueError(f"Cannot snooze table: {table}")
+    snooze_date = _parse_snooze_until(until)
+    conn = get_connection()
+    conn.execute(
+        f"UPDATE {table} SET snoozed_until = ? WHERE id = ?",
+        (snooze_date, item_id),
+    )
+    conn.commit()
+    conn.close()
+    return snooze_date
+
+
+def unsnooze_item(table: str, item_id: int):
+    """Clear snooze on an item so it reappears immediately."""
+    if table not in SNOOZEABLE_TABLES:
+        raise ValueError(f"Cannot unsnooze table: {table}")
+    conn = get_connection()
+    conn.execute(f"UPDATE {table} SET snoozed_until = NULL WHERE id = ?", (item_id,))
+    conn.commit()
+    conn.close()
+
+
+def get_snoozed_items() -> list[dict]:
+    """Return all currently snoozed items across all tables."""
+    conn = get_connection()
+    results = []
+    for table in sorted(SNOOZEABLE_TABLES):
+        try:
+            rows = conn.execute(
+                f"""SELECT id, '{table}' as source_table, snoozed_until,
+                           CASE
+                             WHEN snoozed_until <= date('now') THEN 'expired'
+                             ELSE 'active'
+                           END as snooze_state
+                    FROM {table}
+                    WHERE snoozed_until IS NOT NULL
+                    ORDER BY snoozed_until ASC"""
+            ).fetchall()
+            # Pull a label field for display
+            for row in rows:
+                item = dict(row)
+                # Try to get a description/title for display
+                label_row = conn.execute(
+                    f"SELECT * FROM {table} WHERE id = ?", (item["id"],)
+                ).fetchone()
+                if label_row:
+                    d = dict(label_row)
+                    item["label"] = (
+                        d.get("description") or d.get("title") or
+                        d.get("subject") or d.get("summary") or f"#{item['id']}"
+                    )
+                results.append(item)
+        except Exception:
+            pass
+    conn.close()
+    return results
