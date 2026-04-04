@@ -1,8 +1,38 @@
 # Personal Communication Tracker Configuration
 
 owner:
-  name: "Your Name"
-  email: "your@email.com"   # Gmail address to monitor AND receive digests
+  name: "Daniel Jokonek"
+  phone: "+18186452801"
+
+# The three Gmail accounts to monitor
+accounts:
+  - name: "Personal"
+    email: "danieljokonek@gmail.com"
+    token_file: "credentials/token_personal.json"
+    primary_entities:        # entity keys that emails from this account most likely relate to
+      - "personal"
+      - "well_made_plays"
+      - "mount_vernon"
+
+  - name: "Chorus Crafters"
+    email: "thechoruscrafters@gmail.com"
+    token_file: "credentials/token_choruscrafters.json"
+    primary_entities:
+      - "chorus_crafters"
+
+  - name: "Terra Cognita"
+    email: "terracognitamusic@gmail.com"
+    token_file: "credentials/token_terracognita.json"
+    primary_entities:
+      - "terra_cognita"
+
+# Digest — sent to your personal Gmail
+digest:
+  send_to: "danieljokonek@gmail.com"
+  send_from_account: "Personal"   # which account to send FROM (must match an account name above)
+  schedule:
+    daily_summary: "08:00"
+    weekly_deep_dive: "monday 09:00"
 
 # Your four business entities
 entities:
@@ -20,14 +50,11 @@ entities:
       - "song commission"
       - "song order"
       - "song lyrics"
-      - "mix"
-      - "master"
-      - "produce"
       - "final track"
       - "revision"
       - "demo"
-    accounts_receivable_from: []    # client names who have ordered songs
-    accounts_payable_to: []         # musicians, vocalists, engineers you hire
+    accounts_receivable_from: []
+    accounts_payable_to: []
 
   terra_cognita:
     name: "Terra Cognita"
@@ -75,26 +102,24 @@ entities:
       - "lease"
       - "maintenance"
       - "property"
-    accounts_receivable_from: []    # tenant names
-    accounts_payable_to: []         # contractor names
+    accounts_receivable_from: []
+    accounts_payable_to: []
 
-# Digest email settings
-digest:
-  send_to: "your@email.com"
-  send_from: "your@email.com"
-  schedule:
-    daily_summary: "08:00"        # morning daily summary
-    weekly_deep_dive: "monday 09:00"  # full weekly review
-
-# Gmail fetch settings
-gmail:
+# Google API settings (shared across all accounts)
+google:
   credentials_file: "credentials/credentials.json"
-  token_file: "credentials/token.json"
   max_emails_per_fetch: 100
-  lookback_days: 7      # on first run, how many days back to scan
+  lookback_days: 30          # on first run, scan this many days back
+  calendar_days_ahead: 30    # how many days of upcoming events to pull
+
+# SMS forwarding
+# Texts forwarded to your Gmail will be parsed automatically.
+# See README for setup instructions (iPhone Shortcuts or Google Voice).
+sms:
+  forwarding_email_subject_prefix: "Fwd: Text from"   # adjust to match your forwarding app's subject line
+  enabled: true
 
 # Analysis settings
 analysis:
   model: "claude-opus-4-6"
-  batch_size: 20          # emails per Claude API call
-  min_confidence: 0.6     # minimum confidence to store an extraction
+  batch_size: 20

@@ -27,9 +27,11 @@ class DigestGenerator:
 
     def collect_digest_data(self) -> dict:
         """Gather all pending items from the database for the digest."""
+        summary = db.get_dashboard_summary()
         return {
             "date": date.today().isoformat(),
-            "summary": db.get_dashboard_summary(),
+            "summary": summary,
+            "upcoming_calendar_events": db.get_upcoming_events(days_ahead=14),
             "upcoming_deadlines": db.get_pending_deadlines(days_ahead=14),
             "money_owed_to_you": db.get_pending_financial(direction="receivable"),
             "money_you_owe": db.get_pending_financial(direction="payable"),

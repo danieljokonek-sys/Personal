@@ -26,6 +26,7 @@ def init_db():
         CREATE TABLE IF NOT EXISTS emails (
             id TEXT PRIMARY KEY,
             thread_id TEXT,
+            account_email TEXT,          -- which Gmail account this came from
             sender TEXT,
             recipients TEXT,
             subject TEXT,
@@ -33,7 +34,27 @@ def init_db():
             date TEXT,
             labels TEXT,
             entity_key TEXT,
+            is_sms_forward INTEGER DEFAULT 0,
             processed INTEGER DEFAULT 0,
+            fetched_at TEXT DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE TABLE IF NOT EXISTS calendar_events (
+            event_id TEXT PRIMARY KEY,
+            calendar_id TEXT,
+            calendar_name TEXT,
+            account_email TEXT,
+            title TEXT,
+            description TEXT,
+            location TEXT,
+            start_date TEXT,
+            start_datetime TEXT,
+            end_date TEXT,
+            end_datetime TEXT,
+            all_day INTEGER DEFAULT 0,
+            attendees TEXT,
+            status TEXT DEFAULT 'confirmed',
+            entity_key TEXT,
             fetched_at TEXT DEFAULT CURRENT_TIMESTAMP
         );
 
@@ -149,6 +170,7 @@ def init_db():
 
         CREATE INDEX IF NOT EXISTS idx_emails_entity ON emails(entity_key);
         CREATE INDEX IF NOT EXISTS idx_emails_date ON emails(date);
+        CREATE INDEX IF NOT EXISTS idx_emails_account ON emails(account_email);
         CREATE INDEX IF NOT EXISTS idx_deadlines_due ON deadlines(due_date);
         CREATE INDEX IF NOT EXISTS idx_deadlines_status ON deadlines(status);
         CREATE INDEX IF NOT EXISTS idx_financial_status ON financial_items(status);
@@ -156,6 +178,8 @@ def init_db():
         CREATE INDEX IF NOT EXISTS idx_action_status ON action_items(status);
         CREATE INDEX IF NOT EXISTS idx_orders_status ON song_orders(status);
         CREATE INDEX IF NOT EXISTS idx_orders_event_date ON song_orders(event_date);
+        CREATE INDEX IF NOT EXISTS idx_cal_start ON calendar_events(start_datetime, start_date);
+        CREATE INDEX IF NOT EXISTS idx_cal_account ON calendar_events(account_email);
     """)
     conn.commit()
     conn.close()
@@ -165,11 +189,13 @@ def store_email(email: dict):
     conn = get_connection()
     conn.execute(
         """INSERT OR IGNORE INTO emails
-           (id, thread_id, sender, recipients, subject, body_snippet, date, labels, entity_key)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+           (id, thread_id, account_email, sender, recipients, subject,
+            body_snippet, date, labels, entity_key, is_sms_forward)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
         (
             email["id"],
             email.get("thread_id"),
+            email.get("account_email", ""),
             email.get("sender"),
             json.dumps(email.get("recipients", [])),
             email.get("subject"),
@@ -177,10 +203,65 @@ def store_email(email: dict):
             email.get("date"),
             json.dumps(email.get("labels", [])),
             email.get("entity_key"),
+            1 if email.get("is_sms_forward") else 0,
         ),
     )
     conn.commit()
     conn.close()
+
+
+def store_calendar_events(events: list[dict]):
+    """Upsert a list of calendar events."""
+    conn = get_connection()
+    for ev in events:
+        conn.execute(
+            """INSERT OR REPLACE INTO calendar_events
+               (event_id, calendar_id, calendar_name, account_email,
+                title, description, location,
+                start_date, start_datetime, end_date, end_datetime,
+                all_day, attendees, status, entity_key)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (
+                ev["event_id"],
+                ev.get("calendar_id"),
+                ev.get("calendar_name"),
+                ev.get("account_email"),
+                ev.get("title"),
+                ev.get("description", ""),
+                ev.get("location", ""),
+                ev.get("start_date"),
+                ev.get("start_datetime"),
+                ev.get("end_date"),
+                ev.get("end_datetime"),
+                1 if ev.get("all_day") else 0,
+                json.dumps(ev.get("attendees", [])),
+                ev.get("status", "confirmed"),
+                ev.get("entity_key"),
+            ),
+        )
+    conn.commit()
+    conn.close()
+
+
+def get_upcoming_events(days_ahead: int = 14) -> list[dict]:
+    """Return calendar events starting within the next N days."""
+    conn = get_connection()
+    rows = conn.execute(
+        """SELECT * FROM calendar_events
+           WHERE status != 'cancelled'
+             AND (
+               (start_datetime IS NOT NULL AND start_datetime >= datetime('now')
+                AND start_datetime <= datetime('now', '+' || ? || ' days'))
+               OR
+               (start_date IS NOT NULL AND start_datetime IS NULL
+                AND start_date >= date('now')
+                AND start_date <= date('now', '+' || ? || ' days'))
+             )
+           ORDER BY COALESCE(start_datetime, start_date) ASC""",
+        (days_ahead, days_ahead),
+    ).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
 
 
 def store_extractions(email_id: str, extractions: dict):
@@ -567,6 +648,12 @@ def get_dashboard_summary() -> dict:
         ).fetchone()["c"],
         "active_song_orders": active_orders_row["c"],
         "song_orders_pipeline_value": active_orders_row["v"],
+        "upcoming_events_7d": conn.execute(
+            """SELECT COUNT(*) c FROM calendar_events
+               WHERE status != 'cancelled'
+                 AND COALESCE(start_datetime, start_date) >= date('now')
+                 AND COALESCE(start_datetime, start_date) <= date('now', '+7 days')"""
+        ).fetchone()["c"],
     }
     conn.close()
     return summary

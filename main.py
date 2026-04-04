@@ -53,8 +53,12 @@ from src.database import (
     get_all_orders,
     get_orders_by_status,
     get_orders_pipeline_summary,
+    # calendar
+    store_calendar_events,
+    get_upcoming_events,
 )
-from src.gmail_client import GmailClient
+from src.gmail_client import GmailClient, build_clients, get_send_client
+from src.calendar_client import CalendarClient
 from src.analyzer import Analyzer
 from src.digest import DigestGenerator
 from src.scheduler import TrackerScheduler
@@ -75,59 +79,117 @@ logging.basicConfig(
 log = logging.getLogger("tracker")
 
 
+SMS_FORWARD_INDICATORS = [
+    "fwd: text from", "forwarded text", "sms from", "text message from",
+    "message from +1", "new text from",
+]
+
+
 def get_config():
     config_path = Path("config.yaml")
     if not config_path.exists():
-        console.print("[red]config.yaml not found. Copy config.yaml.example and edit it.[/red]")
+        console.print("[red]config.yaml not found.[/red]")
         sys.exit(1)
     return load_config(str(config_path))
 
 
-def get_gmail(config):
-    gmail_cfg = config.get("gmail", {})
-    return GmailClient(
-        credentials_file=gmail_cfg.get("credentials_file", "credentials/credentials.json"),
-        token_file=gmail_cfg.get("token_file", "credentials/token.json"),
+def _is_sms_forward(email: dict, config: dict) -> bool:
+    """Detect if an email is a forwarded SMS."""
+    subject = (email.get("subject") or "").lower()
+    prefix = config.get("sms", {}).get(
+        "forwarding_email_subject_prefix", "fwd: text from"
+    ).lower()
+    return subject.startswith(prefix) or any(
+        ind in subject for ind in SMS_FORWARD_INDICATORS
     )
 
 
 def do_fetch(config):
-    """Fetch new emails from Gmail and store them."""
-    gmail = get_gmail(config)
-    gmail.authenticate()
+    """Fetch new emails from all configured Gmail accounts."""
     entities = load_entities(config)
+    google_cfg = config.get("google", {})
+    max_emails = google_cfg.get("max_emails_per_fetch", 100)
 
-    gmail_cfg = config.get("gmail", {})
-    max_emails = gmail_cfg.get("max_emails_per_fetch", 100)
-
-    # Determine start date
+    # Determine lookback window
     last_fetch = get_sync_state("last_email_fetch")
     if last_fetch:
         since = datetime.fromisoformat(last_fetch) - timedelta(hours=1)
     else:
-        lookback = gmail_cfg.get("lookback_days", 7)
+        lookback = google_cfg.get("lookback_days", 30)
         since = datetime.now() - timedelta(days=lookback)
 
-    console.print(f"Fetching emails since {since.strftime('%Y-%m-%d %H:%M')}...")
-    emails = gmail.fetch_emails(since=since, max_results=max_emails)
-    console.print(f"Found {len(emails)} emails")
+    clients = build_clients(config)
+    total_stored = 0
 
-    stored = 0
-    for email in emails:
-        # Quick entity classification by keywords
-        combined_text = f"{email.get('subject', '')} {email.get('body_snippet', '')}"
-        entity_key = None
-        for key, entity in entities.items():
-            if entity.matches_text(combined_text):
-                entity_key = key
-                break
-        email["entity_key"] = entity_key
-        store_email(email)
-        stored += 1
+    for client in clients:
+        console.print(f"  Fetching {client.account_email} since {since.strftime('%Y-%m-%d')}...")
+        try:
+            client.authenticate()
+            emails = client.fetch_emails(since=since, max_results=max_emails)
+        except Exception as e:
+            log.error(f"  Failed to fetch {client.account_email}: {e}")
+            continue
+
+        console.print(f"    Found {len(emails)} emails")
+        stored = 0
+        for email in emails:
+            # Detect SMS forwards
+            email["is_sms_forward"] = _is_sms_forward(email, config)
+
+            # Keyword-based entity hint using account's primary entities + content
+            combined = f"{email.get('subject', '')} {email.get('body_snippet', '')}"
+            entity_key = None
+
+            # First check account-level hints from config
+            account_cfg = next(
+                (a for a in config.get("accounts", []) if a["email"] == client.account_email),
+                {}
+            )
+            primary = account_cfg.get("primary_entities", [])
+
+            # Try keyword match within primary entities first, then all
+            candidates = [
+                (k, entities[k]) for k in primary if k in entities
+            ] + [
+                (k, v) for k, v in entities.items() if k not in primary
+            ]
+            for key, entity in candidates:
+                if entity.matches_text(combined):
+                    entity_key = key
+                    break
+
+            email["entity_key"] = entity_key
+            store_email(email)
+            stored += 1
+            total_stored += 1
+
+        console.print(f"    Stored {stored}")
 
     set_sync_state("last_email_fetch", datetime.now().isoformat())
-    console.print(f"[green]Stored {stored} emails[/green]")
-    return stored
+    console.print(f"[green]Total emails stored: {total_stored}[/green]")
+    return total_stored
+
+
+def do_fetch_calendar(config):
+    """Fetch upcoming calendar events from all accounts."""
+    google_cfg = config.get("google", {})
+    days_ahead = google_cfg.get("calendar_days_ahead", 30)
+    clients = build_clients(config)
+    total = 0
+
+    for client in clients:
+        console.print(f"  Calendar: {client.account_email}...")
+        try:
+            client.authenticate()
+            cal = CalendarClient(client)
+            events = cal.fetch_upcoming_events(days_ahead=days_ahead)
+            store_calendar_events(events)
+            console.print(f"    {len(events)} events")
+            total += len(events)
+        except Exception as e:
+            log.error(f"  Calendar fetch failed for {client.account_email}: {e}")
+
+    return total
 
 
 def do_analyze(config):
@@ -194,18 +256,19 @@ def do_digest(config, digest_type="daily"):
     entities = load_entities(config)
     analysis_cfg = config.get("analysis", {})
     model = analysis_cfg.get("model", "claude-opus-4-6")
-    digest_cfg = config.get("digest", {})
-    send_to = digest_cfg.get("send_to", config.get("owner", {}).get("email", ""))
+    send_to = config.get("digest", {}).get("send_to", "")
 
     if not send_to:
-        console.print("[red]No digest recipient configured in config.yaml[/red]")
+        console.print("[red]No digest.send_to configured in config.yaml[/red]")
         return
 
-    gmail = get_gmail(config)
-    gmail.authenticate()
-    analyzer = Analyzer(entities, model=model)
+    # Use the designated send-from account
+    clients = build_clients(config)
+    send_client = get_send_client(config, clients)
+    send_client.authenticate()
 
-    generator = DigestGenerator(analyzer, gmail, entities, send_to)
+    analyzer = Analyzer(entities, model=model)
+    generator = DigestGenerator(analyzer, send_client, entities, send_to)
     html = generator.generate_and_send(digest_type)
     console.print(f"[green]Digest sent to {send_to}[/green]")
     return html
@@ -221,26 +284,43 @@ def cli():
 
 @cli.command()
 def setup():
-    """Initialize the database and authenticate with Gmail."""
+    """Initialize the database. Run setup-accounts to authenticate Gmail."""
     init_db()
     console.print("[green]Database initialized.[/green]")
+    console.print("Next: run [bold]python main.py setup-accounts[/bold] to authorize your Gmail accounts.")
 
+
+@cli.command(name="setup-accounts")
+def setup_accounts():
+    """Authenticate each configured Gmail account (opens browser once per account)."""
     config = get_config()
-    gmail = get_gmail(config)
-    try:
-        gmail.authenticate()
-        console.print("[green]Gmail authenticated successfully.[/green]")
-    except FileNotFoundError as e:
-        console.print(f"[yellow]{e}[/yellow]")
-        console.print("You can still use the tool — Gmail auth will be needed for fetch/digest.")
+    init_db()
+    clients = build_clients(config)
+    accounts = config.get("accounts", [])
+
+    console.print(f"[bold]Authorizing {len(clients)} Gmail account(s)...[/bold]\n")
+    for i, (client, acct_cfg) in enumerate(zip(clients, accounts)):
+        console.print(f"[{i+1}/{len(clients)}] {acct_cfg['name']} ({client.account_email})")
+        try:
+            client.authenticate()
+            console.print(f"  [green]✓ Authorized[/green]\n")
+        except FileNotFoundError as e:
+            console.print(f"  [red]{e}[/red]\n")
+
+    console.print("[bold]Also enable the Google Calendar API:[/bold]")
+    console.print("  console.cloud.google.com → APIs & Services → Library → Calendar API → Enable\n")
+    console.print("[green]Done! Run [bold]python main.py run[/bold] to fetch emails and calendar.[/green]")
 
 
 @cli.command()
 def fetch():
-    """Fetch new emails from Gmail."""
+    """Fetch new emails from all Gmail accounts."""
     config = get_config()
     init_db()
+    console.print("[bold]Fetching emails...[/bold]")
     do_fetch(config)
+    console.print("[bold]Fetching calendar events...[/bold]")
+    do_fetch_calendar(config)
 
 
 @cli.command()
@@ -262,11 +342,16 @@ def digest(digest_type):
 
 @cli.command()
 def run():
-    """Fetch, analyze, and send digest in one shot."""
+    """Fetch emails + calendar, analyze, and send digest in one shot."""
     config = get_config()
     init_db()
+    console.print("[bold]Fetching emails from all accounts...[/bold]")
     do_fetch(config)
+    console.print("[bold]Fetching calendar events...[/bold]")
+    do_fetch_calendar(config)
+    console.print("[bold]Analyzing with Claude...[/bold]")
     do_analyze(config)
+    console.print("[bold]Sending digest...[/bold]")
     do_digest(config)
 
 
@@ -282,6 +367,7 @@ def status():
 
     table.add_row("Total Emails Tracked", str(summary["total_emails"]))
     table.add_row("Unprocessed Emails", str(summary["unprocessed_emails"]))
+    table.add_row("Calendar Events (7 days)", str(summary["upcoming_events_7d"]))
     table.add_row("Active Agreements", str(summary["active_agreements"]))
     table.add_row("Pending Deadlines", str(summary["pending_deadlines"]))
     table.add_row("Money Owed to You", f"${summary['money_owed_to_you']:,.2f}")
@@ -291,6 +377,16 @@ def status():
     table.add_row("Active Song Orders (CC)", str(summary["active_song_orders"]))
     table.add_row("Song Orders Pipeline Value", f"${summary['song_orders_pipeline_value']:,.2f}")
     console.print(table)
+
+    # Show upcoming calendar events
+    events = get_upcoming_events(days_ahead=7)
+    if events:
+        console.print("\n[bold]Calendar — Next 7 Days:[/bold]")
+        for ev in events:
+            when = ev.get("start_datetime") or ev.get("start_date") or "?"
+            when = when[:10]  # date portion only
+            cal = ev.get("calendar_name", "")
+            console.print(f"  {when}  {ev['title']}  [dim]({cal})[/dim]")
 
     # Show upcoming deadlines
     deadlines = get_pending_deadlines(days_ahead=7)
@@ -335,8 +431,12 @@ def schedule_cmd():
     config = get_config()
     init_db()
 
+    def _full_fetch():
+        do_fetch(config)
+        do_fetch_calendar(config)
+
     scheduler = TrackerScheduler(
-        fetch_fn=lambda: do_fetch(config),
+        fetch_fn=_full_fetch,
         analyze_fn=lambda: do_analyze(config),
         digest_fn=lambda dt: do_digest(config, dt),
         config=config,
@@ -345,6 +445,7 @@ def schedule_cmd():
     console.print("[bold]Starting scheduled tracker...[/bold]")
     console.print("Running initial fetch + analyze cycle...")
     do_fetch(config)
+    do_fetch_calendar(config)
     do_analyze(config)
     console.print("[green]Initial cycle complete. Entering schedule loop.[/green]")
     scheduler.run_forever()

@@ -222,26 +222,33 @@ class Analyzer:
 
     def generate_digest_analysis(self, digest_data: dict) -> str:
         """Use Claude to generate a natural-language digest summary."""
-        system_prompt = """You are a sharp, concise personal assistant writing a daily briefing email for a musician/entrepreneur. Write in a warm but direct tone — like a trusted chief of staff who knows the business well.
+        system_prompt = """You are a sharp, concise personal assistant writing a daily briefing email for Daniel Jokonek — a musician/entrepreneur. Write in a warm but direct tone, like a trusted chief of staff who knows all his businesses.
 
 Business entities:
 {entities}
 
-Format the briefing as clean HTML for email. Use headers, bullet points, and bold for emphasis. Keep it scannable — busy people need to see the important stuff immediately.
+Daniel monitors three Gmail accounts (danieljokonek@gmail.com, thechoruscrafters@gmail.com, terracognitamusic@gmail.com) plus Google Calendar across all three. Texts forwarded to email are also included.
 
-Sections to include (skip any section with nothing to report):
-1. URGENT (anything due today or overdue)
-2. Money Matters (who owes what, what's due)
-3. This Week's Deadlines
-4. Active Agreements to Track
-5. Action Items
-6. Quick Stats""".format(entities=self._build_entities_description())
+Format the briefing as clean HTML for email. Use headers, bullet points, and bold for emphasis. Keep it scannable.
+
+Include these sections (skip any with nothing to report):
+1. <h2>🚨 Urgent</h2> — anything due today or overdue, or calendar events today/tomorrow
+2. <h2>📅 Coming Up</h2> — calendar events in the next 14 days, grouped by entity/account
+3. <h2>💰 Money</h2> — who owes Daniel what, what Daniel owes, organized by entity
+4. <h2>🤝 Active Agreements</h2> — open commitments worth watching
+5. <h2>✅ Action Items</h2> — things to do, by priority
+6. <h2>🎵 Chorus Crafters Pipeline</h2> — active song orders summary (if any)
+7. <h2>📊 Quick Stats</h2> — emails scanned, accounts covered, items tracked
+
+Always end with a one-sentence "Daniel's focus for today" based on the most pressing item.""".format(
+            entities=self._build_entities_description()
+        )
 
         user_prompt = f"""Generate today's briefing from this data:
 
 {json.dumps(digest_data, indent=2, default=str)}
 
-Today is {date.today().isoformat()}. Write the HTML email body."""
+Today is {date.today().isoformat()}. Write the full HTML email body."""
 
         response = self.client.messages.create(
             model=self.model,
