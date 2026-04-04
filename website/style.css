@@ -198,12 +198,16 @@ em { font-style: italic; }
   justify-content: space-between;
 }
 .nav-mark { display: flex; align-items: center; }
-.diamond-icon {
-  width: 22px; height: 32px;
-  color: var(--accent);
-  transition: transform 0.4s ease;
+.nav-name {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 500;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  transition: color 0.2s ease;
 }
-.nav-mark:hover .diamond-icon { transform: rotate(14deg) scale(1.1); }
+.nav-mark:hover .nav-name { color: var(--text); }
 
 .nav-links { display: flex; gap: 2.5rem; align-items: center; }
 .nav-links a {
