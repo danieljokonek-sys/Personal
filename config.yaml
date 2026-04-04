@@ -8,15 +8,26 @@ owner:
 entities:
   chorus_crafters:
     name: "The Chorus Crafters"
-    description: "Choir and choral music projects"
+    description: "Custom song company — write, produce, mix, and master professional songs for weddings, memorials, birthdays, and other major life events"
     keywords:
       - "chorus crafters"
-      - "choir"
-      - "choral"
-      - "singing"
-      - "rehearsal"
-    accounts_receivable_from: []    # names of people/orgs who typically owe you here
-    accounts_payable_to: []
+      - "custom song"
+      - "personalized song"
+      - "wedding song"
+      - "memorial song"
+      - "birthday song"
+      - "life event"
+      - "song commission"
+      - "song order"
+      - "song lyrics"
+      - "mix"
+      - "master"
+      - "produce"
+      - "final track"
+      - "revision"
+      - "demo"
+    accounts_receivable_from: []    # client names who have ordered songs
+    accounts_payable_to: []         # musicians, vocalists, engineers you hire
 
   terra_cognita:
     name: "Terra Cognita"

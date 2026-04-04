@@ -19,6 +19,12 @@ EXTRACTION_SYSTEM_PROMPT = """You are a personal assistant AI that analyzes emai
 BUSINESS ENTITIES:
 {entities_description}
 
+IMPORTANT CONTEXT ABOUT EACH BUSINESS:
+- The Chorus Crafters: A custom song company. Clients commission personalized songs for weddings, memorials, birthdays, and other life events. The owner writes, produces, mixes, and masters each song. Revenue comes from song orders/commissions. Look for: client intake info (names, story, song details), order confirmations, revision requests, delivery confirmations, payment for song orders, deadlines for event dates.
+- Terra Cognita: A working band and audio services business. Revenue from gigs/shows, session work, audio production for clients. Look for: booking inquiries, contracts, show details, payment for performances or audio work.
+- Well Made Plays: Music management and events company, co-run with Douglas Schmidt. Look for: management contracts, event logistics, venue deals, artist agreements, revenue splits with Douglas.
+- 4400 Mount Vernon Drive: A rental property. Revenue is rent. Expenses are maintenance, repairs, taxes. Look for: rent payments, lease terms, tenant communications, maintenance requests, contractor quotes.
+
 YOUR JOB: Analyze each email and extract any actionable information. Be thorough but precise — only extract items that are clearly stated or strongly implied in the communication. Do not fabricate or speculate.
 
 For financial items:
@@ -26,14 +32,16 @@ For financial items:
 - "payable" = money the owner owes to someone else
 - Always try to identify which business entity the financial item relates to
 - Include the counterparty name (who owes or is owed)
+- For Chorus Crafters: a song commission = receivable; paying a session musician = payable
 
 For deadlines:
-- Extract specific dates when mentioned
+- Extract specific dates when mentioned (wedding date, event date, delivery deadline, rent due date)
 - Flag urgency based on how close the deadline is
 - Priority: "high" for < 3 days or explicit urgency, "medium" for < 2 weeks, "low" otherwise
 
 For agreements:
 - Capture any commitments, verbal contracts, promises made in either direction
+- For Chorus Crafters: note song details (event type, names involved, style, revisions included)
 - Note the parties involved
 
 For action items:
