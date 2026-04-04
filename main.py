@@ -56,6 +56,20 @@ from src.database import (
     # calendar
     store_calendar_events,
     get_upcoming_events,
+    # tasks
+    add_task,
+    get_pending_tasks,
+    complete_task,
+    delete_task,
+    # follow-ups
+    upsert_follow_up,
+    get_pending_follow_ups,
+    dismiss_follow_up,
+    mark_follow_up_replied,
+    get_stale_action_items,
+    # labeling
+    get_unlabeled_emails,
+    mark_emails_labeled,
 )
 from src.gmail_client import GmailClient, build_clients, get_send_client
 from src.calendar_client import CalendarClient
@@ -190,6 +204,133 @@ def do_fetch_calendar(config):
             log.error(f"  Calendar fetch failed for {client.account_email}: {e}")
 
     return total
+
+
+def do_detect_follow_ups(config):
+    """Scan each account's Sent folder and flag threads with no reply."""
+    if not config.get("features", {}).get("follow_up_detection", True):
+        return
+    follow_up_days = config.get("features", {}).get("follow_up_days", 3)
+    entities = load_entities(config)
+    clients = build_clients(config)
+    since = datetime.now() - timedelta(days=follow_up_days * 5)
+    cutoff = datetime.now() - timedelta(days=follow_up_days)
+    found = 0
+
+    for client in clients:
+        try:
+            client.authenticate()
+            sent = client.fetch_sent_emails(since=since, max_results=40)
+        except Exception as e:
+            log.error(f"  Sent fetch failed for {client.account_email}: {e}")
+            continue
+
+        # Keep only the most-recently-sent message per thread
+        threads: dict[str, dict] = {}
+        for email in sent:
+            tid = email.get("thread_id")
+            if not tid:
+                continue
+            if tid not in threads or email["date"] > threads[tid]["date"]:
+                threads[tid] = email
+
+        for thread_id, last_sent in threads.items():
+            try:
+                sent_dt = datetime.fromisoformat(last_sent["date"])
+            except Exception:
+                continue
+            if sent_dt > cutoff:
+                continue  # too recent to flag
+
+            # Check if anyone replied after our sent date
+            try:
+                thread_msgs = client.get_thread_messages(thread_id)
+            except Exception:
+                continue
+
+            thread_msgs.sort(key=lambda m: m.get("date", ""))
+            has_reply = any(
+                m["date"] > last_sent["date"]
+                and client.account_email.lower() not in m.get("sender", "").lower()
+                for m in thread_msgs
+            )
+            if has_reply:
+                mark_follow_up_replied(thread_id)
+                continue
+
+            # Determine entity from subject
+            entity_key = None
+            subj = last_sent.get("subject", "")
+            for key, entity in entities.items():
+                if entity.matches_text(subj):
+                    entity_key = key
+                    break
+
+            days_waiting = (datetime.now() - sent_dt).days
+            recipient = last_sent.get("to", "").split(",")[0].strip()
+            upsert_follow_up({
+                "thread_id": thread_id,
+                "account_email": client.account_email,
+                "subject": last_sent.get("subject", "(no subject)"),
+                "recipient": recipient,
+                "last_sent_date": sent_dt.date().isoformat(),
+                "entity_key": entity_key,
+                "days_waiting": days_waiting,
+            })
+            found += 1
+
+    console.print(f"[green]Follow-up detection: {found} thread(s) awaiting reply[/green]")
+
+
+def do_apply_labels(config):
+    """Apply Gmail entity labels to classified emails (requires gmail.modify scope)."""
+    if not config.get("features", {}).get("auto_label_emails", True):
+        return
+    entities = load_entities(config)
+    entity_label_map = {
+        key: f"Tracker/{entity.name}"
+        for key, entity in entities.items()
+    }
+    unlabeled = get_unlabeled_emails(limit=200)
+    if not unlabeled:
+        return
+
+    # Group by account_email
+    by_account: dict[str, list[dict]] = {}
+    for email in unlabeled:
+        acct = email.get("account_email", "")
+        by_account.setdefault(acct, []).append(email)
+
+    clients = build_clients(config)
+    client_map = {c.account_email: c for c in clients}
+    labeled_ids = []
+
+    for account_email, emails in by_account.items():
+        client = client_map.get(account_email)
+        if not client:
+            continue
+        try:
+            client.authenticate()
+        except Exception as e:
+            log.error(f"  Label auth failed for {account_email}: {e}")
+            continue
+
+        for email in emails:
+            entity_key = email.get("entity_key")
+            label_name = entity_label_map.get(entity_key)
+            if not label_name:
+                labeled_ids.append(email["id"])  # mark as done even if no label
+                continue
+            try:
+                label_id = client.get_or_create_label(label_name)
+                client.apply_label(email["id"], label_id)
+                labeled_ids.append(email["id"])
+            except Exception as e:
+                log.warning(f"  Label failed for {email['id']}: {e}")
+
+    if labeled_ids:
+        mark_emails_labeled(labeled_ids)
+        console.print(f"[green]Auto-labeled {len(labeled_ids)} email(s) in Gmail[/green]")
 
 
 def do_analyze(config):
@@ -329,6 +470,8 @@ def analyze():
     config = get_config()
     init_db()
     do_analyze(config)
+    console.print("[bold]Applying Gmail labels...[/bold]")
+    do_apply_labels(config)
 
 
 @cli.command()
@@ -351,6 +494,10 @@ def run():
     do_fetch_calendar(config)
     console.print("[bold]Analyzing with Claude...[/bold]")
     do_analyze(config)
+    console.print("[bold]Applying Gmail labels...[/bold]")
+    do_apply_labels(config)
+    console.print("[bold]Detecting follow-ups needed...[/bold]")
+    do_detect_follow_ups(config)
     console.print("[bold]Sending digest...[/bold]")
     do_digest(config)
 
@@ -373,6 +520,9 @@ def status():
     table.add_row("Money Owed to You", f"${summary['money_owed_to_you']:,.2f}")
     table.add_row("Money You Owe", f"${summary['money_you_owe']:,.2f}")
     table.add_row("Pending Action Items", str(summary["pending_actions"]))
+    table.add_row("Stale Actions (3+ days)", str(summary.get("stale_actions", 0)))
+    table.add_row("Tasks (floating)", str(summary.get("pending_tasks", 0)))
+    table.add_row("Awaiting Reply", str(summary.get("follow_ups_waiting", 0)))
     table.add_section()
     table.add_row("Active Song Orders (CC)", str(summary["active_song_orders"]))
     table.add_row("Song Orders Pipeline Value", f"${summary['song_orders_pipeline_value']:,.2f}")
@@ -413,6 +563,23 @@ def status():
             entity = a.get("entity_key", "personal") or "personal"
             console.print(f"  [{a.get('priority', 'medium')}] {a['description']} ({entity})")
 
+    # Show floating tasks
+    tasks = get_pending_tasks()
+    if tasks:
+        console.print("\n[bold]Your Task List:[/bold]")
+        for t in tasks:
+            due = f" — due {t['due_date']}" if t.get("due_date") else ""
+            entity = t.get("entity_key", "personal") or "personal"
+            console.print(f"  #{t['id']} [{t.get('priority','medium')}] {t['title']}{due} ({entity})")
+
+    # Show follow-ups
+    followups = get_pending_follow_ups()
+    if followups:
+        console.print("\n[bold]Awaiting Reply:[/bold]")
+        for f in followups:
+            console.print(f"  #{f['id']} {f['subject']} → {f.get('recipient','?')} "
+                          f"[dim]({f['days_waiting']}d waiting)[/dim]")
+
 
 @cli.command()
 @click.argument("table", type=click.Choice(["agreements", "deadlines", "financial_items", "action_items"]))
@@ -434,6 +601,8 @@ def schedule_cmd():
     def _full_fetch():
         do_fetch(config)
         do_fetch_calendar(config)
+        do_apply_labels(config)
+        do_detect_follow_ups(config)
 
     scheduler = TrackerScheduler(
         fetch_fn=_full_fetch,
@@ -684,6 +853,129 @@ def orders_pipeline():
     outstanding = total_value - collected
     console.print(f"\nCollected: [green]${collected:,.2f}[/green]   "
                   f"Outstanding: [yellow]${outstanding:,.2f}[/yellow]")
+
+
+# ── Floating Tasks ────────────────────────────────────────────────────────────
+
+@cli.group()
+def tasks():
+    """Manage your floating task list (todos not tied to any email)."""
+    pass
+
+
+@tasks.command(name="add")
+@click.argument("title")
+@click.option("--notes", default=None)
+@click.option("--entity", "entity_key", default="personal")
+@click.option("--due", "due_date", default=None, help="Due date YYYY-MM-DD")
+@click.option("--priority", default="medium", type=click.Choice(["high", "medium", "low"]))
+def tasks_add(title, notes, entity_key, due_date, priority):
+    """Add a new task. Example: tasks add \"File Q1 taxes\" --due 2026-04-15 --priority high"""
+    init_db()
+    task_id = add_task(title, notes=notes, entity_key=entity_key, due_date=due_date, priority=priority)
+    console.print(f"[green]Task #{task_id} added: {title}[/green]")
+
+
+@tasks.command(name="list")
+def tasks_list():
+    """List all pending tasks."""
+    init_db()
+    items = get_pending_tasks()
+    if not items:
+        console.print("No pending tasks.")
+        return
+    table = Table(title="Your Task List")
+    table.add_column("ID", style="dim", width=4)
+    table.add_column("Priority")
+    table.add_column("Title")
+    table.add_column("Entity")
+    table.add_column("Due Date")
+    table.add_column("Notes")
+    for t in items:
+        priority_style = {"high": "red", "medium": "yellow", "low": "green"}.get(t["priority"], "")
+        table.add_row(
+            str(t["id"]),
+            f"[{priority_style}]{t['priority']}[/{priority_style}]",
+            t["title"],
+            t.get("entity_key") or "personal",
+            t.get("due_date") or "—",
+            (t.get("notes") or "")[:50],
+        )
+    console.print(table)
+
+
+@tasks.command(name="done")
+@click.argument("task_id", type=int)
+def tasks_done(task_id):
+    """Mark a task as complete."""
+    init_db()
+    complete_task(task_id)
+    console.print(f"[green]Task #{task_id} marked done.[/green]")
+
+
+@tasks.command(name="delete")
+@click.argument("task_id", type=int)
+def tasks_delete(task_id):
+    """Delete a task permanently."""
+    init_db()
+    delete_task(task_id)
+    console.print(f"[green]Task #{task_id} deleted.[/green]")
+
+
+# ── Follow-up Tracking ────────────────────────────────────────────────────────
+
+@cli.group()
+def followups():
+    """View and manage emails awaiting a reply."""
+    pass
+
+
+@followups.command(name="list")
+def followups_list():
+    """Show all threads where you sent last and haven't heard back."""
+    init_db()
+    items = get_pending_follow_ups()
+    if not items:
+        console.print("No follow-ups waiting.")
+        return
+    table = Table(title="Awaiting Reply")
+    table.add_column("ID", style="dim", width=4)
+    table.add_column("Subject")
+    table.add_column("Sent To")
+    table.add_column("Account")
+    table.add_column("Last Sent")
+    table.add_column("Waiting", justify="right")
+    table.add_column("Entity")
+    for f in items:
+        days = f.get("days_waiting", 0)
+        days_style = "red" if days >= 7 else "yellow" if days >= 3 else ""
+        table.add_row(
+            str(f["id"]),
+            (f.get("subject") or "")[:45],
+            (f.get("recipient") or "")[:30],
+            f.get("account_email", ""),
+            f.get("last_sent_date", ""),
+            f"[{days_style}]{days}d[/{days_style}]" if days_style else f"{days}d",
+            f.get("entity_key") or "personal",
+        )
+    console.print(table)
+
+
+@followups.command(name="dismiss")
+@click.argument("followup_id", type=int)
+def followups_dismiss(followup_id):
+    """Dismiss a follow-up (mark as not needed)."""
+    init_db()
+    dismiss_follow_up(followup_id)
+    console.print(f"[green]Follow-up #{followup_id} dismissed.[/green]")
+
+
+@followups.command(name="scan")
+def followups_scan():
+    """Manually trigger a follow-up scan of sent emails."""
+    config = get_config()
+    init_db()
+    do_detect_follow_ups(config)
 
 
 if __name__ == "__main__":

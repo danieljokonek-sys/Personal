@@ -232,13 +232,15 @@ Daniel monitors three Gmail accounts (danieljokonek@gmail.com, thechoruscrafters
 Format the briefing as clean HTML for email. Use headers, bullet points, and bold for emphasis. Keep it scannable.
 
 Include these sections (skip any with nothing to report):
-1. <h2>🚨 Urgent</h2> — anything due today or overdue, or calendar events today/tomorrow
+1. <h2>🚨 Urgent</h2> — anything due today or overdue, calendar events today/tomorrow, AND any action items or tasks that have been sitting unresolved for 3+ days (call these out by name with how many days they've been waiting)
 2. <h2>📅 Coming Up</h2> — calendar events in the next 14 days, grouped by entity/account
 3. <h2>💰 Money</h2> — who owes Daniel what, what Daniel owes, organized by entity
 4. <h2>🤝 Active Agreements</h2> — open commitments worth watching
-5. <h2>✅ Action Items</h2> — things to do, by priority
-6. <h2>🎵 Chorus Crafters Pipeline</h2> — active song orders summary (if any)
-7. <h2>📊 Quick Stats</h2> — emails scanned, accounts covered, items tracked
+5. <h2>📋 Task List</h2> — Daniel's manually-added floating tasks (not email-derived), sorted by priority and due date
+6. <h2>✅ Action Items</h2> — email-derived action items, sorted by priority score (high priority and overdue first)
+7. <h2>📬 Awaiting Reply</h2> — emails Daniel sent that have received no response, oldest first. Call out who hasn't replied and how many days it's been.
+8. <h2>🎵 Chorus Crafters Pipeline</h2> — active song orders summary (if any)
+9. <h2>📊 Quick Stats</h2> — emails scanned, accounts covered, items tracked
 
 Always end with a one-sentence "Daniel's focus for today" based on the most pressing item.""".format(
             entities=self._build_entities_description()

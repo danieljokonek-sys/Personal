@@ -37,6 +37,9 @@ class DigestGenerator:
             "money_you_owe": db.get_pending_financial(direction="payable"),
             "active_agreements": db.get_active_agreements(),
             "action_items": db.get_pending_actions(),
+            "tasks": db.get_pending_tasks(),
+            "follow_ups_needed": db.get_pending_follow_ups(),
+            "stale_action_items": db.get_stale_action_items(days=3),
             "entities": {
                 k: {"name": e.name, "description": e.description}
                 for k, e in self.entities.items()
@@ -54,6 +57,9 @@ class DigestGenerator:
             or data["summary"]["money_owed_to_you"] > 0
             or data["summary"]["money_you_owe"] > 0
             or data["summary"]["active_agreements"] > 0
+            or data["summary"].get("pending_tasks", 0) > 0
+            or data["summary"].get("follow_ups_waiting", 0) > 0
+            or data["upcoming_calendar_events"]
         )
 
         if not has_content:

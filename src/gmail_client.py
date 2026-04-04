@@ -17,10 +17,11 @@ from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 
-# Gmail read/send + Calendar read — all three accounts need these
+# Gmail read/send/modify + Calendar read — all three accounts need these
 SCOPES = [
     "https://www.googleapis.com/auth/gmail.readonly",
     "https://www.googleapis.com/auth/gmail.send",
+    "https://www.googleapis.com/auth/gmail.modify",
     "https://www.googleapis.com/auth/calendar.readonly",
 ]
 
@@ -32,6 +33,7 @@ class GmailClient:
         self.account_email = account_email   # hint shown during OAuth flow
         self.service = None
         self._creds = None
+        self._label_cache: dict[str, str] = {}  # name → label_id
 
     def authenticate(self):
         """Authenticate this account via OAuth2. Opens browser on first run."""
@@ -40,6 +42,9 @@ class GmailClient:
 
         if token_path.exists():
             creds = Credentials.from_authorized_user_file(str(token_path), SCOPES)
+            # If scopes changed, force re-auth
+            if creds and creds.scopes and not all(s in creds.scopes for s in SCOPES):
+                creds = None
 
         if not creds or not creds.valid:
             if creds and creds.expired and creds.refresh_token:
@@ -125,6 +130,98 @@ class GmailClient:
         self.service.users().messages().send(
             userId="me", body={"raw": raw}
         ).execute()
+
+    def fetch_sent_emails(
+        self,
+        since: datetime | None = None,
+        max_results: int = 40,
+    ) -> list[dict]:
+        """Fetch recently sent emails for follow-up detection."""
+        if not self.service:
+            self.authenticate()
+        q_parts = ["in:sent"]
+        if since:
+            q_parts.append(f"after:{since.strftime('%Y/%m/%d')}")
+        results = self.service.users().messages().list(
+            userId="me", q=" ".join(q_parts), maxResults=max_results
+        ).execute()
+        emails = []
+        for msg_ref in results.get("messages", []):
+            msg = self.service.users().messages().get(
+                userId="me", id=msg_ref["id"], format="metadata",
+                metadataHeaders=["From", "To", "Subject", "Date"],
+            ).execute()
+            parsed = self._parse_message_metadata(msg)
+            if parsed:
+                emails.append(parsed)
+        return emails
+
+    def get_thread_messages(self, thread_id: str) -> list[dict]:
+        """Get all messages in a thread (metadata only) for reply detection."""
+        if not self.service:
+            self.authenticate()
+        thread = self.service.users().threads().get(
+            userId="me", id=thread_id, format="metadata",
+            metadataHeaders=["From", "To", "Subject", "Date"],
+        ).execute()
+        return [
+            m for m in
+            (self._parse_message_metadata(msg) for msg in thread.get("messages", []))
+            if m
+        ]
+
+    def get_or_create_label(self, name: str) -> str:
+        """Return Gmail label ID for the given name, creating it if needed."""
+        if name in self._label_cache:
+            return self._label_cache[name]
+        if not self.service:
+            self.authenticate()
+        result = self.service.users().labels().list(userId="me").execute()
+        for label in result.get("labels", []):
+            if label["name"].lower() == name.lower():
+                self._label_cache[name] = label["id"]
+                return label["id"]
+        # Create it
+        new_label = self.service.users().labels().create(
+            userId="me",
+            body={
+                "name": name,
+                "labelListVisibility": "labelShow",
+                "messageListVisibility": "show",
+            },
+        ).execute()
+        self._label_cache[name] = new_label["id"]
+        return new_label["id"]
+
+    def apply_label(self, message_id: str, label_id: str):
+        """Add a label to a Gmail message."""
+        if not self.service:
+            self.authenticate()
+        self.service.users().messages().modify(
+            userId="me",
+            id=message_id,
+            body={"addLabelIds": [label_id]},
+        ).execute()
+
+    def _parse_message_metadata(self, msg: dict) -> dict | None:
+        headers = {
+            h["name"].lower(): h["value"]
+            for h in msg.get("payload", {}).get("headers", [])
+        }
+        date_str = headers.get("date", "")
+        try:
+            parsed_date = parsedate_to_datetime(date_str).isoformat()
+        except Exception:
+            parsed_date = date_str
+        return {
+            "id": msg["id"],
+            "thread_id": msg.get("threadId"),
+            "sender": headers.get("from", ""),
+            "to": headers.get("to", ""),
+            "subject": headers.get("subject", ""),
+            "date": parsed_date,
+            "labels": msg.get("labelIds", []),
+        }
 
     def _parse_message(self, msg: dict) -> dict | None:
         headers = {

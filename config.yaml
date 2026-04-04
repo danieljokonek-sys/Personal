@@ -123,3 +123,10 @@ sms:
 analysis:
   model: "claude-opus-4-6"
   batch_size: 20
+
+# Feature flags
+features:
+  auto_label_emails: true       # apply Gmail labels by business entity after analysis
+  follow_up_detection: true     # flag sent emails with no reply after N days
+  follow_up_days: 3             # how many days before flagging as needing follow-up
+  nag_after_days: 3             # days before action items get escalated in digest

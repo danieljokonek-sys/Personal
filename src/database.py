@@ -117,6 +117,7 @@ def _migrate(conn: sqlite3.Connection):
     migrations = [
         ("emails", "account_email", "TEXT"),
         ("emails", "is_sms_forward", "INTEGER DEFAULT 0"),
+        ("emails", "gmail_labeled", "INTEGER DEFAULT 0"),
     ]
     for table, col, col_def in migrations:
         if col not in existing:
@@ -141,6 +142,30 @@ def _migrate(conn: sqlite3.Connection):
             status TEXT DEFAULT 'confirmed',
             entity_key TEXT,
             fetched_at TEXT DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE TABLE IF NOT EXISTS tasks (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            title TEXT NOT NULL,
+            notes TEXT,
+            entity_key TEXT DEFAULT 'personal',
+            due_date TEXT,
+            priority TEXT DEFAULT 'medium',
+            status TEXT DEFAULT 'pending',
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE TABLE IF NOT EXISTS follow_ups (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            thread_id TEXT UNIQUE NOT NULL,
+            account_email TEXT,
+            subject TEXT,
+            recipient TEXT,
+            last_sent_date TEXT,
+            entity_key TEXT,
+            days_waiting INTEGER DEFAULT 0,
+            status TEXT DEFAULT 'pending',
+            detected_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT DEFAULT CURRENT_TIMESTAMP
         );
         CREATE TABLE IF NOT EXISTS song_orders (
             order_id TEXT PRIMARY KEY,
@@ -174,6 +199,9 @@ def _migrate(conn: sqlite3.Connection):
         CREATE INDEX IF NOT EXISTS idx_cal_account ON calendar_events(account_email);
         CREATE INDEX IF NOT EXISTS idx_orders_status ON song_orders(status);
         CREATE INDEX IF NOT EXISTS idx_orders_event_date ON song_orders(event_date);
+        CREATE INDEX IF NOT EXISTS idx_tasks_status ON tasks(status);
+        CREATE INDEX IF NOT EXISTS idx_tasks_due ON tasks(due_date);
+        CREATE INDEX IF NOT EXISTS idx_followup_status ON follow_ups(status);
     """)
     conn.commit()
 
@@ -647,6 +675,167 @@ def get_dashboard_summary() -> dict:
                  AND COALESCE(start_datetime, start_date) >= date('now')
                  AND COALESCE(start_datetime, start_date) <= date('now', '+7 days')"""
         ).fetchone()["c"],
+        "pending_tasks": conn.execute(
+            "SELECT COUNT(*) c FROM tasks WHERE status = 'pending'"
+        ).fetchone()["c"],
+        "follow_ups_waiting": conn.execute(
+            "SELECT COUNT(*) c FROM follow_ups WHERE status = 'pending'"
+        ).fetchone()["c"],
+        "stale_actions": conn.execute(
+            """SELECT COUNT(*) c FROM action_items
+               WHERE status = 'pending'
+                 AND created_at <= datetime('now', '-3 days')"""
+        ).fetchone()["c"],
     }
     conn.close()
     return summary
+
+
+# ── Floating Tasks ────────────────────────────────────────────────────────────
+
+def add_task(title: str, notes: str = None, entity_key: str = "personal",
+             due_date: str = None, priority: str = "medium") -> int:
+    conn = get_connection()
+    now = datetime.utcnow().isoformat()
+    cur = conn.execute(
+        """INSERT INTO tasks (title, notes, entity_key, due_date, priority, created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?)""",
+        (title, notes, entity_key, due_date, priority, now, now),
+    )
+    conn.commit()
+    task_id = cur.lastrowid
+    conn.close()
+    return task_id
+
+
+def get_pending_tasks() -> list[dict]:
+    conn = get_connection()
+    rows = conn.execute(
+        """SELECT * FROM tasks WHERE status = 'pending'
+           ORDER BY
+             CASE priority WHEN 'high' THEN 0 WHEN 'medium' THEN 1 ELSE 2 END,
+             due_date ASC NULLS LAST,
+             created_at ASC"""
+    ).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+def complete_task(task_id: int):
+    conn = get_connection()
+    conn.execute(
+        "UPDATE tasks SET status = 'done', updated_at = ? WHERE id = ?",
+        (datetime.utcnow().isoformat(), task_id),
+    )
+    conn.commit()
+    conn.close()
+
+
+def delete_task(task_id: int):
+    conn = get_connection()
+    conn.execute("DELETE FROM tasks WHERE id = ?", (task_id,))
+    conn.commit()
+    conn.close()
+
+
+# ── Follow-up Detection ───────────────────────────────────────────────────────
+
+def upsert_follow_up(fu: dict):
+    """Insert or update a follow-up record (keyed on thread_id)."""
+    conn = get_connection()
+    now = datetime.utcnow().isoformat()
+    conn.execute(
+        """INSERT INTO follow_ups
+               (thread_id, account_email, subject, recipient, last_sent_date,
+                entity_key, days_waiting, status, detected_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?)
+           ON CONFLICT(thread_id) DO UPDATE SET
+               days_waiting = excluded.days_waiting,
+               updated_at = excluded.updated_at
+           WHERE follow_ups.status = 'pending'""",
+        (
+            fu["thread_id"], fu.get("account_email"), fu.get("subject"),
+            fu.get("recipient"), fu.get("last_sent_date"), fu.get("entity_key"),
+            fu.get("days_waiting", 0), now, now,
+        ),
+    )
+    conn.commit()
+    conn.close()
+
+
+def mark_follow_up_replied(thread_id: str):
+    conn = get_connection()
+    conn.execute(
+        "UPDATE follow_ups SET status = 'replied', updated_at = ? WHERE thread_id = ?",
+        (datetime.utcnow().isoformat(), thread_id),
+    )
+    conn.commit()
+    conn.close()
+
+
+def dismiss_follow_up(follow_up_id: int):
+    conn = get_connection()
+    conn.execute(
+        "UPDATE follow_ups SET status = 'dismissed', updated_at = ? WHERE id = ?",
+        (datetime.utcnow().isoformat(), follow_up_id),
+    )
+    conn.commit()
+    conn.close()
+
+
+def get_pending_follow_ups() -> list[dict]:
+    conn = get_connection()
+    rows = conn.execute(
+        """SELECT * FROM follow_ups WHERE status = 'pending'
+           ORDER BY days_waiting DESC"""
+    ).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+# ── Stale Action Items (Nag Mode) ─────────────────────────────────────────────
+
+def get_stale_action_items(days: int = 3) -> list[dict]:
+    """Return action items that have been pending for more than N days."""
+    conn = get_connection()
+    rows = conn.execute(
+        """SELECT a.*, e.subject as email_subject,
+                  CAST(julianday('now') - julianday(a.created_at) AS INTEGER) as days_old
+           FROM action_items a
+           LEFT JOIN emails e ON a.email_id = e.id
+           WHERE a.status = 'pending'
+             AND a.created_at <= datetime('now', '-' || ? || ' days')
+           ORDER BY a.created_at ASC""",
+        (days,),
+    ).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+# ── Auto-labeling ─────────────────────────────────────────────────────────────
+
+def get_unlabeled_emails(limit: int = 200) -> list[dict]:
+    """Return processed emails that haven't been labeled in Gmail yet."""
+    conn = get_connection()
+    rows = conn.execute(
+        """SELECT id, account_email, entity_key FROM emails
+           WHERE processed = 1 AND gmail_labeled = 0
+             AND entity_key IS NOT NULL AND entity_key != 'personal'
+           ORDER BY date DESC LIMIT ?""",
+        (limit,),
+    ).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+def mark_emails_labeled(email_ids: list[str]):
+    if not email_ids:
+        return
+    conn = get_connection()
+    placeholders = ",".join("?" * len(email_ids))
+    conn.execute(
+        f"UPDATE emails SET gmail_labeled = 1 WHERE id IN ({placeholders})",
+        email_ids,
+    )
+    conn.commit()
+    conn.close()
