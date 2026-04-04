@@ -15,12 +15,25 @@
   <!-- Grain texture overlay -->
   <div class="grain" aria-hidden="true"></div>
 
+  <!-- Atmospheric orbs (background layer) -->
+  <div class="atmos" aria-hidden="true">
+    <div class="atmos-orb atmos-orb--amber"></div>
+    <div class="atmos-orb atmos-orb--violet"></div>
+    <div class="atmos-orb atmos-orb--teal"></div>
+  </div>
+
   <!-- Navigation -->
   <header id="header">
     <nav class="nav">
       <a href="#hero" class="nav-mark" aria-label="Home">
         <svg class="diamond-icon" viewBox="0 0 100 140" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-          <polygon points="50,4 92,46 50,136 8,46" stroke="currentColor" stroke-width="2.5"/>
+          <defs>
+            <filter id="glow-sm">
+              <feGaussianBlur stdDeviation="3" result="blur"/>
+              <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+            </filter>
+          </defs>
+          <polygon filter="url(#glow-sm)" points="50,4 92,46 50,136 8,46" stroke="currentColor" stroke-width="2.5"/>
           <line x1="8" y1="46" x2="92" y2="46" stroke="currentColor" stroke-width="1.5"/>
           <line x1="50" y1="4" x2="28" y2="46" stroke="currentColor" stroke-width="1.5"/>
           <line x1="50" y1="4" x2="72" y2="46" stroke="currentColor" stroke-width="1.5"/>
@@ -41,29 +54,30 @@
 
     <!-- ===================== HERO ===================== -->
     <section id="hero" class="hero">
-      <div class="hero-bg-mark" aria-hidden="true">
-        <svg viewBox="0 0 100 140" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <polygon points="50,4 92,46 50,136 8,46" stroke="currentColor" stroke-width="0.4"/>
-          <line x1="8" y1="46" x2="92" y2="46" stroke="currentColor" stroke-width="0.4"/>
-          <line x1="50" y1="4" x2="28" y2="46" stroke="currentColor" stroke-width="0.4"/>
-          <line x1="50" y1="4" x2="72" y2="46" stroke="currentColor" stroke-width="0.4"/>
-          <line x1="28" y1="46" x2="50" y2="136" stroke="currentColor" stroke-width="0.4"/>
-          <line x1="72" y1="46" x2="50" y2="136" stroke="currentColor" stroke-width="0.4"/>
-        </svg>
-      </div>
 
       <div class="hero-content" data-reveal>
         <div class="hero-mark">
           <svg class="diamond-hero" viewBox="0 0 100 140" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-            <polygon points="50,4 92,46 50,136 8,46" stroke="currentColor" stroke-width="2.5"/>
-            <line x1="8" y1="46" x2="92" y2="46" stroke="currentColor" stroke-width="1.5"/>
-            <line x1="50" y1="4" x2="28" y2="46" stroke="currentColor" stroke-width="1.5"/>
-            <line x1="50" y1="4" x2="72" y2="46" stroke="currentColor" stroke-width="1.5"/>
-            <line x1="28" y1="46" x2="50" y2="136" stroke="currentColor" stroke-width="1.5"/>
-            <line x1="72" y1="46" x2="50" y2="136" stroke="currentColor" stroke-width="1.5"/>
+            <defs>
+              <filter id="glow-hero" x="-50%" y="-50%" width="200%" height="200%">
+                <feGaussianBlur stdDeviation="5" result="blur"/>
+                <feMerge>
+                  <feMergeNode in="blur"/>
+                  <feMergeNode in="blur"/>
+                  <feMergeNode in="SourceGraphic"/>
+                </feMerge>
+              </filter>
+            </defs>
+            <polygon filter="url(#glow-hero)" points="50,4 92,46 50,136 8,46" stroke="currentColor" stroke-width="2"/>
+            <line x1="8" y1="46" x2="92" y2="46" stroke="currentColor" stroke-width="1.25"/>
+            <line x1="50" y1="4" x2="28" y2="46" stroke="currentColor" stroke-width="1.25"/>
+            <line x1="50" y1="4" x2="72" y2="46" stroke="currentColor" stroke-width="1.25"/>
+            <line x1="28" y1="46" x2="50" y2="136" stroke="currentColor" stroke-width="1.25"/>
+            <line x1="72" y1="46" x2="50" y2="136" stroke="currentColor" stroke-width="1.25"/>
           </svg>
         </div>
-        <h1 class="hero-name">Daniel<br>Okonek</h1>
+
+        <h1 class="hero-name" data-text="Daniel Okonek">Daniel<br>Okonek</h1>
         <p class="hero-tagline">Production &amp; Song Services</p>
         <a href="#services" class="hero-cta">View Services</a>
       </div>
@@ -73,6 +87,30 @@
         <div class="scroll-line"></div>
       </div>
     </section>
+
+    <!-- Marquee -->
+    <div class="marquee-wrap" aria-hidden="true">
+      <div class="marquee-track">
+        <span>Production</span><span class="msep">◆</span>
+        <span>Mixing</span><span class="msep">◆</span>
+        <span>Arrangement</span><span class="msep">◆</span>
+        <span>Composition</span><span class="msep">◆</span>
+        <span>Education</span><span class="msep">◆</span>
+        <span>Podcast</span><span class="msep">◆</span>
+        <span>Production</span><span class="msep">◆</span>
+        <span>Mixing</span><span class="msep">◆</span>
+        <span>Arrangement</span><span class="msep">◆</span>
+        <span>Composition</span><span class="msep">◆</span>
+        <span>Education</span><span class="msep">◆</span>
+        <span>Podcast</span><span class="msep">◆</span>
+        <span>Production</span><span class="msep">◆</span>
+        <span>Mixing</span><span class="msep">◆</span>
+        <span>Arrangement</span><span class="msep">◆</span>
+        <span>Composition</span><span class="msep">◆</span>
+        <span>Education</span><span class="msep">◆</span>
+        <span>Podcast</span><span class="msep">◆</span>
+      </div>
+    </div>
 
     <!-- ===================== SERVICES ===================== -->
     <section id="services" class="services">
@@ -228,7 +266,6 @@
 
           </div>
         </div>
-
       </div>
     </section>
 
@@ -300,11 +337,22 @@
 
     <!-- ===================== CONTACT ===================== -->
     <section id="contact" class="contact">
+      <div class="contact-atmos" aria-hidden="true"></div>
       <div class="container">
         <div class="contact-inner" data-reveal>
           <div class="contact-mark" aria-hidden="true">
             <svg viewBox="0 0 100 140" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <polygon points="50,4 92,46 50,136 8,46" stroke="currentColor" stroke-width="2"/>
+              <defs>
+                <filter id="glow-contact" x="-60%" y="-60%" width="220%" height="220%">
+                  <feGaussianBlur stdDeviation="6" result="blur"/>
+                  <feMerge>
+                    <feMergeNode in="blur"/>
+                    <feMergeNode in="blur"/>
+                    <feMergeNode in="SourceGraphic"/>
+                  </feMerge>
+                </filter>
+              </defs>
+              <polygon filter="url(#glow-contact)" points="50,4 92,46 50,136 8,46" stroke="currentColor" stroke-width="2"/>
               <line x1="8" y1="46" x2="92" y2="46" stroke="currentColor" stroke-width="1.25"/>
               <line x1="50" y1="4" x2="28" y2="46" stroke="currentColor" stroke-width="1.25"/>
               <line x1="50" y1="4" x2="72" y2="46" stroke="currentColor" stroke-width="1.25"/>

@@ -1,22 +1,30 @@
 /* ============================================================
    Daniel Okonek — Style Sheet
+   Foundation: existing brand (dark charcoal · amber · cream · diamond)
+   Flavor: atmospheric depth, subtle grain, cosmic undertone
    ============================================================ */
 
 /* ------------------------------------------------------------
    Custom Properties
    ------------------------------------------------------------ */
 :root {
+  /* Core palette — from brand reference */
   --bg:          #16140f;
   --bg-raised:   #1d1b14;
-  --bg-card:     #211f18;
-  --accent:      #c8784a;
-  --accent-dim:  #a06038;
-  --teal:        #4d8c87;
-  --text:        #e8e3d8;
+  --bg-card:     #222019;
+  --accent:      #c8784a;   /* amber — primary brand color */
+  --accent-dim:  #9e5e35;
+  --teal:        #4d8c87;   /* secondary, used sparingly */
+  --text:        #e8e3d8;   /* warm cream */
   --text-muted:  #7a7468;
-  --text-faint:  #3e3c36;
-  --border:      #28261e;
-  --border-light:#343028;
+  --text-faint:  #3a3830;
+  --border:      #272420;
+  --border-mid:  #332f28;
+
+  /* Flavor — very restrained atmospheric accents */
+  --glow-amber:  rgba(200, 120, 74, 0.10);
+  --glow-violet: rgba(100, 60, 140, 0.06);
+  --glow-teal:   rgba(77, 140, 135, 0.06);
 
   --font-display: 'Cormorant Garamond', Georgia, serif;
   --font-ui:      'Space Grotesk', system-ui, sans-serif;
@@ -30,7 +38,6 @@
    Reset
    ------------------------------------------------------------ */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
 html { scroll-behavior: smooth; }
 
 body {
@@ -48,22 +55,72 @@ ul { list-style: none; }
 em { font-style: italic; }
 
 /* ------------------------------------------------------------
-   Grain Overlay
+   Grain Overlay — heavier than before, truer to brand texture
    ------------------------------------------------------------ */
 .grain {
   position: fixed;
   inset: 0;
   pointer-events: none;
   z-index: 9999;
-  opacity: 0.04;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.72' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");
+  opacity: 0.055;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.68' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");
   background-size: 200px 200px;
+}
+
+/* ------------------------------------------------------------
+   Atmospheric orbs — flavor layer, barely visible
+   ------------------------------------------------------------ */
+.atmos {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  overflow: hidden;
+}
+
+.atmos-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  opacity: 0;
+  animation: orb-breathe 14s ease-in-out infinite;
+}
+
+.atmos-orb--amber {
+  width: 600px; height: 600px;
+  top: -10%; left: -10%;
+  background: radial-gradient(circle, var(--glow-amber) 0%, transparent 70%);
+  animation-delay: 0s;
+  opacity: 1;
+}
+
+.atmos-orb--violet {
+  width: 500px; height: 500px;
+  bottom: 10%; right: -5%;
+  background: radial-gradient(circle, var(--glow-violet) 0%, transparent 70%);
+  animation-delay: 5s;
+  opacity: 1;
+}
+
+.atmos-orb--teal {
+  width: 400px; height: 400px;
+  top: 40%; left: 50%;
+  background: radial-gradient(circle, var(--glow-teal) 0%, transparent 70%);
+  animation-delay: 10s;
+  opacity: 1;
+}
+
+@keyframes orb-breathe {
+  0%, 100% { transform: scale(1) translate(0, 0); }
+  50%       { transform: scale(1.15) translate(20px, -20px); }
 }
 
 /* ------------------------------------------------------------
    Layout
    ------------------------------------------------------------ */
 .container {
+  position: relative;
+  z-index: 1;
   max-width: var(--max-w);
   margin: 0 auto;
   padding: 0 var(--pad-x);
@@ -74,10 +131,9 @@ em { font-style: italic; }
    ------------------------------------------------------------ */
 [data-reveal] {
   opacity: 0;
-  transform: translateY(24px);
-  transition: opacity 0.7s ease, transform 0.7s ease;
+  transform: translateY(22px);
+  transition: opacity 0.75s ease, transform 0.75s ease;
 }
-
 [data-reveal].is-visible {
   opacity: 1;
   transform: translateY(0);
@@ -122,9 +178,9 @@ em { font-style: italic; }
 }
 
 #header.scrolled {
-  background-color: rgba(22, 20, 15, 0.92);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  background-color: rgba(22, 20, 15, 0.94);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
   padding: 1.1rem var(--pad-x);
   border-bottom-color: var(--border);
 }
@@ -140,15 +196,12 @@ em { font-style: italic; }
 .nav-mark { display: flex; align-items: center; }
 
 .diamond-icon {
-  width: 24px;
-  height: 34px;
+  width: 22px;
+  height: 32px;
   color: var(--accent);
   transition: transform 0.4s ease;
 }
-
-.nav-mark:hover .diamond-icon {
-  transform: rotate(12deg) scale(1.08);
-}
+.nav-mark:hover .diamond-icon { transform: rotate(12deg) scale(1.08); }
 
 .nav-links {
   display: flex;
@@ -157,14 +210,13 @@ em { font-style: italic; }
 }
 
 .nav-links a {
-  font-size: 0.72rem;
+  font-size: 0.7rem;
   font-weight: 500;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.15em;
   text-transform: uppercase;
   color: var(--text-muted);
   transition: color 0.2s ease;
 }
-
 .nav-links a:hover { color: var(--text); }
 
 /* ------------------------------------------------------------
@@ -172,6 +224,7 @@ em { font-style: italic; }
    ------------------------------------------------------------ */
 .hero {
   position: relative;
+  z-index: 1;
   min-height: 100svh;
   display: flex;
   align-items: center;
@@ -179,18 +232,14 @@ em { font-style: italic; }
   overflow: hidden;
 }
 
-.hero-bg-mark {
+/* Subtle centered radial glow — the "light source" */
+.hero::before {
+  content: '';
   position: absolute;
-  right: -2%;
-  top: 50%;
-  transform: translateY(-50%);
-  width: min(520px, 58vw);
-  color: var(--text);
-  opacity: 0.035;
+  inset: 0;
+  background: radial-gradient(ellipse 70% 70% at 50% 48%, rgba(200, 120, 74, 0.07) 0%, transparent 65%);
   pointer-events: none;
 }
-
-.hero-bg-mark svg { width: 100%; height: auto; }
 
 .hero-content {
   position: relative;
@@ -202,22 +251,24 @@ em { font-style: italic; }
 .hero-mark {
   display: flex;
   justify-content: center;
-  margin-bottom: 2rem;
+  margin-bottom: 2.25rem;
 }
 
 .diamond-hero {
-  width: 44px;
-  height: 62px;
+  width: 48px;
+  height: 68px;
   color: var(--accent);
   animation: float 7s ease-in-out infinite;
 }
 
 @keyframes float {
   0%, 100% { transform: translateY(0px); }
-  50%       { transform: translateY(-9px); }
+  50%       { transform: translateY(-10px); }
 }
 
+/* Hero name with subtle glitch flavor */
 .hero-name {
+  position: relative;
   font-family: var(--font-display);
   font-size: clamp(4.5rem, 13vw, 11rem);
   font-weight: 300;
@@ -225,6 +276,25 @@ em { font-style: italic; }
   letter-spacing: -0.025em;
   color: var(--text);
   margin-bottom: 1.75rem;
+}
+
+/* Glitch pseudo-element — fires rarely, stays subtle */
+.hero-name::before {
+  content: attr(data-text);
+  position: absolute;
+  inset: 0;
+  color: var(--accent);
+  clip-path: inset(100% 0 0 0);
+  animation: name-glitch 12s steps(1) infinite;
+  pointer-events: none;
+}
+
+@keyframes name-glitch {
+  0%, 89%, 100% { clip-path: inset(100% 0 0 0); transform: none; opacity: 0; }
+  90%  { clip-path: inset(15% 0 75% 0); transform: translateX(-3px); opacity: 0.6; }
+  91%  { clip-path: inset(60% 0 25% 0); transform: translateX(3px);  opacity: 0.6; }
+  92%  { clip-path: inset(35% 0 55% 0); transform: translateX(-2px); opacity: 0.5; }
+  93%  { clip-path: inset(100% 0 0 0);  transform: none; opacity: 0; }
 }
 
 .hero-tagline {
@@ -249,7 +319,6 @@ em { font-style: italic; }
   padding: 0.9rem 2.25rem;
   transition: background-color 0.2s ease, color 0.2s ease;
 }
-
 .hero-cta:hover {
   background-color: var(--accent);
   color: var(--bg);
@@ -264,37 +333,79 @@ em { font-style: italic; }
   flex-direction: column;
   align-items: center;
   gap: 0.6rem;
+  z-index: 1;
 }
-
 .hero-scroll span {
-  font-size: 0.62rem;
+  font-size: 0.6rem;
   letter-spacing: 0.22em;
   text-transform: uppercase;
   color: var(--text-faint);
 }
-
 .scroll-line {
   width: 1px;
   height: 44px;
   background: linear-gradient(to bottom, var(--text-faint), transparent);
-  animation: pulse-line 2.2s ease-in-out infinite;
+  animation: pulse-line 2.4s ease-in-out infinite;
+}
+@keyframes pulse-line {
+  0%, 100% { opacity: 0.2; }
+  50%       { opacity: 0.85; }
 }
 
-@keyframes pulse-line {
-  0%, 100% { opacity: 0.25; }
-  50%       { opacity: 0.9; }
+/* ------------------------------------------------------------
+   Marquee — between hero and services
+   ------------------------------------------------------------ */
+.marquee-wrap {
+  position: relative;
+  z-index: 1;
+  overflow: hidden;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  padding: 0.9rem 0;
+  background-color: var(--bg-raised);
+}
+
+.marquee-track {
+  display: flex;
+  gap: 0;
+  width: max-content;
+  animation: marquee 28s linear infinite;
+}
+
+.marquee-track span {
+  font-family: var(--font-ui);
+  font-size: 0.68rem;
+  font-weight: 400;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  padding: 0 1.5rem;
+  white-space: nowrap;
+}
+
+.marquee-track .msep {
+  color: var(--accent);
+  padding: 0;
+  letter-spacing: 0;
+  font-size: 0.5rem;
+}
+
+@keyframes marquee {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-33.333%); }
 }
 
 /* ------------------------------------------------------------
    Services
    ------------------------------------------------------------ */
 .services {
+  position: relative;
+  z-index: 1;
   padding: var(--section-py) 0;
   background-color: var(--bg);
 }
 
 .services-group { margin-bottom: clamp(4rem, 8vw, 6rem); }
-
 .services-group-head { margin-bottom: 2.5rem; }
 
 .services-group-title {
@@ -304,14 +415,13 @@ em { font-style: italic; }
   color: var(--text);
   margin-bottom: 0.5rem;
 }
-
 .services-group-note {
   font-size: 0.8rem;
   color: var(--text-muted);
   letter-spacing: 0.04em;
 }
 
-/* Service Grid */
+/* Grid */
 .services-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
@@ -327,16 +437,21 @@ em { font-style: italic; }
   flex-direction: column;
   gap: 1.5rem;
   transition: background-color 0.25s ease;
+  border-left: 2px solid transparent;
 }
-
-.service-card:hover { background-color: var(--bg-raised); }
+.service-card:hover {
+  background-color: var(--bg-raised);
+  border-left-color: var(--accent);
+}
 
 .service-card--full {
   background-color: var(--bg-raised);
-  grid-column: span 1;
+  border-left-color: var(--accent-dim);
 }
-
-.service-card--full:hover { background-color: var(--bg-card); }
+.service-card--full:hover {
+  background-color: var(--bg-card);
+  border-left-color: var(--accent);
+}
 
 .service-card-top { display: flex; flex-direction: column; gap: 0.75rem; }
 
@@ -367,16 +482,9 @@ em { font-style: italic; }
   display: block;
 }
 
-.service-royalty {
-  font-size: 0.78rem;
-  color: var(--text-muted);
-}
+.service-royalty { font-size: 0.78rem; color: var(--text-muted); }
 
-.service-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.55rem;
-}
+.service-list { display: flex; flex-direction: column; gap: 0.55rem; }
 
 .service-list li {
   font-size: 0.82rem;
@@ -385,7 +493,6 @@ em { font-style: italic; }
   position: relative;
   line-height: 1.45;
 }
-
 .service-list li.inc::before {
   content: '+';
   position: absolute;
@@ -393,7 +500,6 @@ em { font-style: italic; }
   color: var(--accent);
   font-weight: 500;
 }
-
 .service-list li.exc::before {
   content: '−';
   position: absolute;
@@ -425,16 +531,14 @@ em { font-style: italic; }
   gap: 1.5rem;
   align-items: flex-start;
   transition: background-color 0.25s ease;
+  border-left: 2px solid transparent;
+}
+.additional-card:hover {
+  background-color: var(--bg-raised);
+  border-left-color: var(--teal);
 }
 
-.additional-card:hover { background-color: var(--bg-raised); }
-
-.additional-icon {
-  flex-shrink: 0;
-  color: var(--accent);
-  margin-top: 0.2rem;
-}
-
+.additional-icon { flex-shrink: 0; color: var(--teal); margin-top: 0.2rem; }
 .additional-icon svg { width: 26px; height: 26px; }
 
 .additional-body { display: flex; flex-direction: column; gap: 0.75rem; }
@@ -446,22 +550,16 @@ em { font-style: italic; }
   color: var(--text);
 }
 
-.additional-pricing {
-  display: flex;
-  flex-direction: column;
-  gap: 0.2rem;
-}
+.additional-pricing { display: flex; flex-direction: column; gap: 0.2rem; }
 
-.additional-desc {
-  font-size: 0.85rem;
-  color: var(--text-muted);
-  line-height: 1.65;
-}
+.additional-desc { font-size: 0.85rem; color: var(--text-muted); line-height: 1.65; }
 
 /* ------------------------------------------------------------
    Work
    ------------------------------------------------------------ */
 .work {
+  position: relative;
+  z-index: 1;
   padding: var(--section-py) 0;
   background-color: var(--bg-raised);
 }
@@ -475,31 +573,28 @@ em { font-style: italic; }
   gap: 2rem;
 }
 
-.work-diamond {
-  width: 36px;
-  height: 50px;
-  color: var(--text-faint);
-}
+.work-diamond { width: 34px; height: 48px; color: var(--text-faint); }
 
 .work-label {
   font-family: var(--font-display);
   font-size: 1.1rem;
   font-style: italic;
   color: var(--text-muted);
-  letter-spacing: 0.04em;
 }
 
 /* ------------------------------------------------------------
    About
    ------------------------------------------------------------ */
 .about {
+  position: relative;
+  z-index: 1;
   padding: var(--section-py) 0;
   background-color: var(--bg);
 }
 
 .about-layout {
   display: grid;
-  grid-template-columns: 1fr 320px;
+  grid-template-columns: 1fr 300px;
   gap: clamp(3rem, 6vw, 6rem);
   align-items: start;
 }
@@ -514,27 +609,17 @@ em { font-style: italic; }
   margin-bottom: 2.25rem;
 }
 
-.about-body {
-  display: flex;
-  flex-direction: column;
-  gap: 1.35rem;
-}
+.about-body { display: flex; flex-direction: column; gap: 1.4rem; }
 
 .about-body p {
   font-size: 0.95rem;
-  line-height: 1.8;
+  line-height: 1.85;
   color: var(--text-muted);
 }
-
-.about-body em  { color: var(--text); font-style: italic; }
+.about-body em     { color: var(--text); font-style: italic; }
 .about-body strong { color: var(--text); font-weight: 500; }
 
-.about-stats {
-  display: flex;
-  flex-direction: column;
-  gap: 1.75rem;
-  padding-top: 0.5rem;
-}
+.about-stats { display: flex; flex-direction: column; gap: 1.75rem; }
 
 .stat {
   border-left: 1px solid var(--accent);
@@ -544,17 +629,17 @@ em { font-style: italic; }
 .stat-num {
   display: block;
   font-family: var(--font-display);
-  font-size: 1.25rem;
+  font-size: 1.2rem;
   font-weight: 400;
   color: var(--text);
-  line-height: 1.1;
+  line-height: 1.15;
   margin-bottom: 0.3rem;
 }
 
 .stat-label {
   display: block;
-  font-size: 0.7rem;
-  letter-spacing: 0.12em;
+  font-size: 0.68rem;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--text-muted);
 }
@@ -563,11 +648,23 @@ em { font-style: italic; }
    Contact
    ------------------------------------------------------------ */
 .contact {
+  position: relative;
+  z-index: 1;
   padding: var(--section-py) 0;
   background-color: var(--bg-raised);
+  overflow: hidden;
+}
+
+/* Radial amber glow behind the contact section */
+.contact-atmos {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse 80% 80% at 50% 60%, rgba(200, 120, 74, 0.08) 0%, transparent 70%);
+  pointer-events: none;
 }
 
 .contact-inner {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -575,13 +672,8 @@ em { font-style: italic; }
   gap: 1.5rem;
 }
 
-.contact-mark {
-  color: var(--accent);
-  opacity: 0.55;
-  margin-bottom: 0.75rem;
-}
-
-.contact-mark svg { width: 38px; height: 54px; }
+.contact-mark { color: var(--accent); margin-bottom: 0.75rem; }
+.contact-mark svg { width: 40px; height: 56px; }
 
 .contact-heading {
   font-family: var(--font-display);
@@ -591,17 +683,13 @@ em { font-style: italic; }
   letter-spacing: -0.02em;
   color: var(--text);
 }
-
-.contact-heading em {
-  color: var(--accent);
-  font-style: italic;
-}
+.contact-heading em { color: var(--accent); font-style: italic; }
 
 .contact-sub {
   font-size: 0.88rem;
   color: var(--text-muted);
   max-width: 380px;
-  line-height: 1.7;
+  line-height: 1.75;
 }
 
 .contact-btn {
@@ -617,7 +705,6 @@ em { font-style: italic; }
   margin-top: 0.5rem;
   transition: background-color 0.2s ease, transform 0.2s ease;
 }
-
 .contact-btn:hover {
   background-color: var(--accent-dim);
   transform: translateY(-2px);
@@ -627,6 +714,8 @@ em { font-style: italic; }
    Footer
    ------------------------------------------------------------ */
 .footer {
+  position: relative;
+  z-index: 1;
   padding: 2rem 0;
   border-top: 1px solid var(--border);
   background-color: var(--bg);
@@ -647,48 +736,37 @@ em { font-style: italic; }
 }
 
 .footer-copy {
-  font-size: 0.72rem;
+  font-size: 0.7rem;
   letter-spacing: 0.08em;
   color: var(--text-faint);
 }
 
 /* ------------------------------------------------------------
-   Responsive — Tablet
+   Responsive
    ------------------------------------------------------------ */
 @media (max-width: 900px) {
   .about-layout {
     grid-template-columns: 1fr;
     gap: 3rem;
   }
-
   .about-stats {
     flex-direction: row;
     flex-wrap: wrap;
     gap: 1.5rem;
   }
-
   .stat { flex: 1; min-width: 140px; }
 }
 
-/* ------------------------------------------------------------
-   Responsive — Mobile
-   ------------------------------------------------------------ */
 @media (max-width: 680px) {
-  .services-grid      { grid-template-columns: 1fr; }
-  .additional-grid    { grid-template-columns: 1fr; }
+  .services-grid   { grid-template-columns: 1fr; }
+  .additional-grid { grid-template-columns: 1fr; }
   .service-card--full { grid-column: span 1; }
-
   .nav-links { gap: 1.5rem; }
   .nav-links a { font-size: 0.65rem; }
-
-  .hero-bg-mark { display: none; }
 }
 
 @media (max-width: 440px) {
   .nav-links { gap: 1rem; }
-
   .service-card,
   .additional-card { padding: 1.5rem; }
-
-  .contact-mark { display: none; }
 }
