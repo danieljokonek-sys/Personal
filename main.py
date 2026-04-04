@@ -23,7 +23,7 @@ Usage:
 import json
 import logging
 import sys
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import click
@@ -213,8 +213,9 @@ def do_detect_follow_ups(config):
     follow_up_days = config.get("features", {}).get("follow_up_days", 3)
     entities = load_entities(config)
     clients = build_clients(config)
-    since = datetime.now() - timedelta(days=follow_up_days * 5)
-    cutoff = datetime.now() - timedelta(days=follow_up_days)
+    now_utc = datetime.now(timezone.utc)
+    since = now_utc - timedelta(days=follow_up_days * 5)
+    cutoff = now_utc - timedelta(days=follow_up_days)
     found = 0
 
     for client in clients:
@@ -237,6 +238,9 @@ def do_detect_follow_ups(config):
         for thread_id, last_sent in threads.items():
             try:
                 sent_dt = datetime.fromisoformat(last_sent["date"])
+                # Ensure timezone-aware for comparison
+                if sent_dt.tzinfo is None:
+                    sent_dt = sent_dt.replace(tzinfo=timezone.utc)
             except Exception:
                 continue
             if sent_dt > cutoff:
@@ -266,7 +270,7 @@ def do_detect_follow_ups(config):
                     entity_key = key
                     break
 
-            days_waiting = (datetime.now() - sent_dt).days
+            days_waiting = (now_utc - sent_dt).days
             recipient = last_sent.get("to", "").split(",")[0].strip()
             upsert_follow_up({
                 "thread_id": thread_id,
