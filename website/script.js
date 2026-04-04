@@ -119,12 +119,12 @@ document.addEventListener('keydown', e => {
       if (target.wrap && target.wrapCls) target.wrap.classList.remove(target.wrapCls);
     }, 600);
 
-    // Schedule next glitch at random 5–10s interval
-    setTimeout(glitchRandom, 5000 + Math.random() * 5000);
+    // Schedule next glitch at random 1.2–2.8s interval
+    setTimeout(glitchRandom, 1200 + Math.random() * 1600);
   }
 
   // First glitch after a short delay
-  setTimeout(glitchRandom, 3000 + Math.random() * 3000);
+  setTimeout(glitchRandom, 800 + Math.random() * 800);
 })();
 
 // --- Persistent Spotify player toggle ---
