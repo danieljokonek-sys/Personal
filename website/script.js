@@ -39,6 +39,24 @@ document.querySelectorAll('a[href^="#"]').forEach(a => {
   });
 });
 
+// --- Services accordion ---
+document.querySelectorAll('.svc-head').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const item = btn.closest('.svc-item');
+    const isOpen = item.classList.contains('is-open');
+    // Close all
+    document.querySelectorAll('.svc-item').forEach(i => {
+      i.classList.remove('is-open');
+      i.querySelector('.svc-head').setAttribute('aria-expanded', 'false');
+    });
+    // Open clicked (unless it was already open)
+    if (!isOpen) {
+      item.classList.add('is-open');
+      btn.setAttribute('aria-expanded', 'true');
+    }
+  });
+});
+
 // --- Persistent Spotify player toggle ---
 const playerBar    = document.getElementById('player-bar');
 const playerToggle = document.getElementById('player-toggle');
