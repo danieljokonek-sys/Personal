@@ -839,3 +839,51 @@ def mark_emails_labeled(email_ids: list[str]):
     )
     conn.commit()
     conn.close()
+
+
+# ── 14-Day Horizon ────────────────────────────────────────────────────────────
+
+def get_horizon_data(days_ahead: int = 14) -> dict:
+    """Return upcoming events plus all pending items for cross-referencing."""
+    events = get_upcoming_events(days_ahead=days_ahead)
+    conn = get_connection()
+
+    action_items = [dict(r) for r in conn.execute(
+        """SELECT a.*, e.subject as email_subject
+           FROM action_items a LEFT JOIN emails e ON a.email_id = e.id
+           WHERE a.status = 'pending'
+           ORDER BY a.due_date ASC NULLS LAST"""
+    ).fetchall()]
+
+    financial_items = [dict(r) for r in conn.execute(
+        """SELECT f.*, e.subject as email_subject
+           FROM financial_items f LEFT JOIN emails e ON f.email_id = e.id
+           WHERE f.status = 'pending'
+           ORDER BY f.due_date ASC NULLS LAST"""
+    ).fetchall()]
+
+    deadlines = [dict(r) for r in conn.execute(
+        """SELECT d.*, e.subject as email_subject
+           FROM deadlines d LEFT JOIN emails e ON d.email_id = e.id
+           WHERE d.status = 'pending'
+           ORDER BY d.due_date ASC"""
+    ).fetchall()]
+
+    follow_ups = [dict(r) for r in conn.execute(
+        "SELECT * FROM follow_ups WHERE status = 'pending' ORDER BY days_waiting DESC"
+    ).fetchall()]
+
+    tasks = [dict(r) for r in conn.execute(
+        """SELECT * FROM tasks WHERE status = 'pending'
+           ORDER BY due_date ASC NULLS LAST"""
+    ).fetchall()]
+
+    conn.close()
+    return {
+        "events": events,
+        "action_items": action_items,
+        "financial_items": financial_items,
+        "deadlines": deadlines,
+        "follow_ups": follow_ups,
+        "tasks": tasks,
+    }

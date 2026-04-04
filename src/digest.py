@@ -10,6 +10,7 @@ from . import database as db
 from .analyzer import Analyzer
 from .gmail_client import GmailClient
 from .entities import Entity
+from .database import get_horizon_data
 
 
 class DigestGenerator:
@@ -40,6 +41,7 @@ class DigestGenerator:
             "tasks": db.get_pending_tasks(),
             "follow_ups_needed": db.get_pending_follow_ups(),
             "stale_action_items": db.get_stale_action_items(days=3),
+            "horizon": get_horizon_data(days_ahead=14),
             "entities": {
                 k: {"name": e.name, "description": e.description}
                 for k, e in self.entities.items()

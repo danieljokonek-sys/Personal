@@ -32,6 +32,8 @@ from rich.console import Console
 from rich.table import Table
 
 from src.entities import load_config, load_entities
+from datetime import date as date_type
+
 from src.database import (
     init_db,
     store_email,
@@ -70,6 +72,8 @@ from src.database import (
     # labeling
     get_unlabeled_emails,
     mark_emails_labeled,
+    # horizon
+    get_horizon_data,
 )
 from src.gmail_client import GmailClient, build_clients, get_send_client
 from src.calendar_client import CalendarClient
@@ -857,6 +861,141 @@ def orders_pipeline():
     outstanding = total_value - collected
     console.print(f"\nCollected: [green]${collected:,.2f}[/green]   "
                   f"Outstanding: [yellow]${outstanding:,.2f}[/yellow]")
+
+
+# ── 14-Day Horizon ───────────────────────────────────────────────────────────
+
+@cli.command()
+@click.option("--days", default=14, help="How many days ahead to show")
+def horizon(days):
+    """Show upcoming calendar events cross-referenced with pending items."""
+    init_db()
+    data = get_horizon_data(days_ahead=days)
+    events = data["events"]
+
+    if not events:
+        console.print(f"[dim]No calendar events in the next {days} days.[/dim]")
+        return
+
+    def _items_for_event(event: dict) -> dict:
+        """Find pending items related to this event by entity and date proximity."""
+        entity = event.get("entity_key")
+        raw_date = event.get("start_date") or (event.get("start_datetime") or "")[:10]
+        try:
+            ev_date = date_type.fromisoformat(raw_date)
+        except Exception:
+            ev_date = None
+
+        results = {"actions": [], "financial": [], "deadlines": [], "follow_ups": [], "tasks": []}
+
+        for item in data["action_items"]:
+            if entity and item.get("entity_key") == entity:
+                results["actions"].append(item)
+            elif ev_date and item.get("due_date"):
+                try:
+                    delta = abs((ev_date - date_type.fromisoformat(item["due_date"])).days)
+                    if delta <= 5:
+                        results["actions"].append(item)
+                except Exception:
+                    pass
+
+        for item in data["financial_items"]:
+            if entity and item.get("entity_key") == entity:
+                results["financial"].append(item)
+
+        for item in data["deadlines"]:
+            if entity and item.get("entity_key") == entity:
+                results["deadlines"].append(item)
+            elif ev_date and item.get("due_date"):
+                try:
+                    delta = abs((ev_date - date_type.fromisoformat(item["due_date"])).days)
+                    if delta <= 5:
+                        results["deadlines"].append(item)
+                except Exception:
+                    pass
+
+        for item in data["follow_ups"]:
+            if entity and item.get("entity_key") == entity:
+                results["follow_ups"].append(item)
+
+        for item in data["tasks"]:
+            if entity and item.get("entity_key") == entity:
+                results["tasks"].append(item)
+            elif ev_date and item.get("due_date"):
+                try:
+                    delta = abs((ev_date - date_type.fromisoformat(item["due_date"])).days)
+                    if delta <= 7:
+                        results["tasks"].append(item)
+                except Exception:
+                    pass
+
+        return results
+
+    console.print(f"\n[bold]14-Day Horizon — Next {days} Days[/bold]\n")
+
+    today = date_type.today()
+    seen_item_ids: dict[str, set] = {k: set() for k in ["actions", "financial", "deadlines", "follow_ups", "tasks"]}
+
+    for event in events:
+        raw_date = event.get("start_date") or (event.get("start_datetime") or "")[:10]
+        try:
+            ev_date = date_type.fromisoformat(raw_date)
+            days_away = (ev_date - today).days
+            when = f"{raw_date} ({'+' if days_away >= 0 else ''}{days_away}d)"
+        except Exception:
+            when = raw_date
+
+        cal = event.get("calendar_name", "")
+        entity = event.get("entity_key", "")
+        entity_tag = f"[dim]{entity}[/dim]" if entity else ""
+        console.print(f"[bold cyan]📅 {when}  {event['title']}[/bold cyan]  {entity_tag}  [dim]({cal})[/dim]")
+
+        items = _items_for_event(event)
+        has_any = any(v for v in items.values())
+
+        for item in items["deadlines"]:
+            if item["id"] in seen_item_ids["deadlines"]:
+                continue
+            seen_item_ids["deadlines"].add(item["id"])
+            due = item.get("due_date", "?")
+            pri = item.get("priority", "medium")
+            pri_color = "red" if pri == "high" else "yellow"
+            console.print(f"   ⏰ [{pri_color}]{item['description']}[/{pri_color}]  due {due}")
+
+        for item in items["financial"]:
+            if item["id"] in seen_item_ids["financial"]:
+                continue
+            seen_item_ids["financial"].add(item["id"])
+            amt = f"${item['amount']:,.2f}" if item.get("amount") else "amount TBD"
+            direction = "→ owed to you" if item["direction"] == "receivable" else "← you owe"
+            console.print(f"   💰 {item.get('counterparty','?')} — {amt}  {direction}  [dim]{item.get('description','')}[/dim]")
+
+        for item in items["actions"]:
+            if item["id"] in seen_item_ids["actions"]:
+                continue
+            seen_item_ids["actions"].add(item["id"])
+            due = f"  due {item['due_date']}" if item.get("due_date") else ""
+            pri = item.get("priority", "medium")
+            pri_color = "red" if pri == "high" else ""
+            txt = f"[{pri_color}]{item['description']}[/{pri_color}]" if pri_color else item["description"]
+            console.print(f"   ✅ {txt}{due}")
+
+        for item in items["tasks"]:
+            if item["id"] in seen_item_ids["tasks"]:
+                continue
+            seen_item_ids["tasks"].add(item["id"])
+            due = f"  due {item['due_date']}" if item.get("due_date") else ""
+            console.print(f"   📋 [bold]{item['title']}[/bold]{due}  [dim](task #{item['id']})[/dim]")
+
+        for item in items["follow_ups"]:
+            if item["id"] in seen_item_ids["follow_ups"]:
+                continue
+            seen_item_ids["follow_ups"].add(item["id"])
+            console.print(f"   📬 No reply from {item.get('recipient','?')}  [dim]{item.get('subject','')}  ({item['days_waiting']}d waiting)[/dim]")
+
+        if not has_any:
+            console.print("   [dim]— nothing pending[/dim]")
+        console.print()
 
 
 # ── Floating Tasks ────────────────────────────────────────────────────────────
