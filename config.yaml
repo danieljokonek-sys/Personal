@@ -1,0 +1,89 @@
+# Personal Communication Tracker Configuration
+
+owner:
+  name: "Your Name"
+  email: "your@email.com"   # Gmail address to monitor AND receive digests
+
+# Your four business entities
+entities:
+  chorus_crafters:
+    name: "The Chorus Crafters"
+    description: "Choir and choral music projects"
+    keywords:
+      - "chorus crafters"
+      - "choir"
+      - "choral"
+      - "singing"
+      - "rehearsal"
+    accounts_receivable_from: []    # names of people/orgs who typically owe you here
+    accounts_payable_to: []
+
+  terra_cognita:
+    name: "Terra Cognita"
+    description: "Band and audio services"
+    keywords:
+      - "terra cognita"
+      - "terra cog"
+      - "audio services"
+      - "recording"
+      - "mixing"
+      - "mastering"
+      - "gig"
+      - "show"
+      - "band"
+    accounts_receivable_from: []
+    accounts_payable_to: []
+
+  well_made_plays:
+    name: "Well Made Plays"
+    description: "Music management and events company"
+    partner: "Douglas Schmidt"
+    keywords:
+      - "well made plays"
+      - "wmp"
+      - "douglas schmidt"
+      - "doug schmidt"
+      - "events"
+      - "management"
+      - "booking"
+      - "venue"
+      - "ticket"
+    accounts_receivable_from: []
+    accounts_payable_to: []
+
+  mount_vernon:
+    name: "4400 Mount Vernon Drive"
+    description: "Rental property management"
+    keywords:
+      - "mount vernon"
+      - "4400"
+      - "tenant"
+      - "rent"
+      - "rental"
+      - "landlord"
+      - "lease"
+      - "maintenance"
+      - "property"
+    accounts_receivable_from: []    # tenant names
+    accounts_payable_to: []         # contractor names
+
+# Digest email settings
+digest:
+  send_to: "your@email.com"
+  send_from: "your@email.com"
+  schedule:
+    daily_summary: "08:00"        # morning daily summary
+    weekly_deep_dive: "monday 09:00"  # full weekly review
+
+# Gmail fetch settings
+gmail:
+  credentials_file: "credentials/credentials.json"
+  token_file: "credentials/token.json"
+  max_emails_per_fetch: 100
+  lookback_days: 7      # on first run, how many days back to scan
+
+# Analysis settings
+analysis:
+  model: "claude-opus-4-6"
+  batch_size: 20          # emails per Claude API call
+  min_confidence: 0.6     # minimum confidence to store an extraction
