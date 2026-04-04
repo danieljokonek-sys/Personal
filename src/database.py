@@ -22,11 +22,11 @@ def get_connection() -> sqlite3.Connection:
 
 def init_db():
     conn = get_connection()
+    # Step 1: create core tables using only original columns (safe for existing DBs)
     conn.executescript("""
         CREATE TABLE IF NOT EXISTS emails (
             id TEXT PRIMARY KEY,
             thread_id TEXT,
-            account_email TEXT,          -- which Gmail account this came from
             sender TEXT,
             recipients TEXT,
             subject TEXT,
@@ -34,27 +34,7 @@ def init_db():
             date TEXT,
             labels TEXT,
             entity_key TEXT,
-            is_sms_forward INTEGER DEFAULT 0,
             processed INTEGER DEFAULT 0,
-            fetched_at TEXT DEFAULT CURRENT_TIMESTAMP
-        );
-
-        CREATE TABLE IF NOT EXISTS calendar_events (
-            event_id TEXT PRIMARY KEY,
-            calendar_id TEXT,
-            calendar_name TEXT,
-            account_email TEXT,
-            title TEXT,
-            description TEXT,
-            location TEXT,
-            start_date TEXT,
-            start_datetime TEXT,
-            end_date TEXT,
-            end_datetime TEXT,
-            all_day INTEGER DEFAULT 0,
-            attendees TEXT,
-            status TEXT DEFAULT 'confirmed',
-            entity_key TEXT,
             fetched_at TEXT DEFAULT CURRENT_TIMESTAMP
         );
 
@@ -116,72 +96,17 @@ def init_db():
             updated_at TEXT DEFAULT CURRENT_TIMESTAMP
         );
 
-        -- Chorus Crafters: custom song order pipeline
-        CREATE TABLE IF NOT EXISTS song_orders (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-
-            -- Source traceability
-            email_id TEXT REFERENCES emails(id),
-
-            -- Client
-            client_name TEXT,
-            client_email TEXT,
-            client_phone TEXT,
-
-            -- Event
-            event_type TEXT,      -- wedding | memorial | birthday | anniversary | other
-            event_date TEXT,      -- YYYY-MM-DD, the performance/occasion date
-            honoree_names TEXT,   -- "John & Jane Smith", "In Memory of Bob"
-            event_notes TEXT,     -- venue, context, anything else
-
-            -- Song brief
-            song_style TEXT,      -- genre, mood, vibe, instrumentation
-            song_story TEXT,      -- the narrative / details to weave in
-            reference_songs TEXT, -- JSON array of reference track titles/artists
-
-            -- Revisions
-            revisions_included INTEGER DEFAULT 2,
-            revisions_used INTEGER DEFAULT 0,
-
-            -- Financials
-            price REAL,
-            deposit_amount REAL,
-            deposit_paid INTEGER DEFAULT 0,   -- 0/1 boolean
-            deposit_date TEXT,
-            balance_due REAL,
-            balance_paid INTEGER DEFAULT 0,
-            balance_date TEXT,
-
-            -- Delivery milestones
-            demo_delivered INTEGER DEFAULT 0,
-            demo_date TEXT,
-            final_delivered INTEGER DEFAULT 0,
-            final_date TEXT,
-
-            -- Status pipeline:
-            -- inquiry → quoted → deposit_received → in_production →
-            -- revision_requested → in_revision → delivered → complete | cancelled
-            status TEXT DEFAULT 'inquiry',
-
-            notes TEXT,
-            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-            updated_at TEXT DEFAULT CURRENT_TIMESTAMP
-        );
-
         CREATE INDEX IF NOT EXISTS idx_emails_entity ON emails(entity_key);
         CREATE INDEX IF NOT EXISTS idx_emails_date ON emails(date);
-        CREATE INDEX IF NOT EXISTS idx_emails_account ON emails(account_email);
         CREATE INDEX IF NOT EXISTS idx_deadlines_due ON deadlines(due_date);
         CREATE INDEX IF NOT EXISTS idx_deadlines_status ON deadlines(status);
         CREATE INDEX IF NOT EXISTS idx_financial_status ON financial_items(status);
         CREATE INDEX IF NOT EXISTS idx_financial_direction ON financial_items(direction);
         CREATE INDEX IF NOT EXISTS idx_action_status ON action_items(status);
-        CREATE INDEX IF NOT EXISTS idx_orders_status ON song_orders(status);
-        CREATE INDEX IF NOT EXISTS idx_orders_event_date ON song_orders(event_date);
-        CREATE INDEX IF NOT EXISTS idx_cal_start ON calendar_events(start_datetime, start_date);
-        CREATE INDEX IF NOT EXISTS idx_cal_account ON calendar_events(account_email);
     """)
     conn.commit()
+
+    # Step 2: migrate — adds new columns and new tables to existing DBs
     _migrate(conn)
     conn.close()
 
@@ -241,6 +166,10 @@ def _migrate(conn: sqlite3.Connection):
             created_at TEXT DEFAULT CURRENT_TIMESTAMP,
             updated_at TEXT DEFAULT CURRENT_TIMESTAMP
         );
+    """)
+    # Indexes on new tables/columns (safe now that tables and columns exist)
+    conn.executescript("""
+        CREATE INDEX IF NOT EXISTS idx_emails_account ON emails(account_email);
         CREATE INDEX IF NOT EXISTS idx_cal_start ON calendar_events(start_datetime, start_date);
         CREATE INDEX IF NOT EXISTS idx_cal_account ON calendar_events(account_email);
         CREATE INDEX IF NOT EXISTS idx_orders_status ON song_orders(status);
