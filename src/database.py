@@ -182,7 +182,71 @@ def init_db():
         CREATE INDEX IF NOT EXISTS idx_cal_account ON calendar_events(account_email);
     """)
     conn.commit()
+    _migrate(conn)
     conn.close()
+
+
+def _migrate(conn: sqlite3.Connection):
+    """Add columns/tables that may be missing from older database versions."""
+    existing = {row[1] for row in conn.execute("PRAGMA table_info(emails)")}
+    migrations = [
+        ("emails", "account_email", "TEXT"),
+        ("emails", "is_sms_forward", "INTEGER DEFAULT 0"),
+    ]
+    for table, col, col_def in migrations:
+        if col not in existing:
+            conn.execute(f"ALTER TABLE {table} ADD COLUMN {col} {col_def}")
+
+    # Create calendar_events if it doesn't exist (older DBs won't have it)
+    conn.executescript("""
+        CREATE TABLE IF NOT EXISTS calendar_events (
+            event_id TEXT PRIMARY KEY,
+            calendar_id TEXT,
+            calendar_name TEXT,
+            account_email TEXT,
+            title TEXT,
+            description TEXT,
+            location TEXT,
+            start_date TEXT,
+            start_datetime TEXT,
+            end_date TEXT,
+            end_datetime TEXT,
+            all_day INTEGER DEFAULT 0,
+            attendees TEXT,
+            status TEXT DEFAULT 'confirmed',
+            entity_key TEXT,
+            fetched_at TEXT DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE TABLE IF NOT EXISTS song_orders (
+            order_id TEXT PRIMARY KEY,
+            entity_key TEXT DEFAULT 'chorus_crafters',
+            client_name TEXT,
+            client_email TEXT,
+            client_phone TEXT,
+            song_title TEXT,
+            occasion TEXT,
+            event_date TEXT,
+            delivery_deadline TEXT,
+            quote_amount REAL,
+            deposit_amount REAL,
+            balance_due REAL,
+            deposit_paid INTEGER DEFAULT 0,
+            balance_paid INTEGER DEFAULT 0,
+            demo_delivered INTEGER DEFAULT 0,
+            demo_date TEXT,
+            final_delivered INTEGER DEFAULT 0,
+            final_date TEXT,
+            status TEXT DEFAULT 'inquiry',
+            notes TEXT,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE INDEX IF NOT EXISTS idx_cal_start ON calendar_events(start_datetime, start_date);
+        CREATE INDEX IF NOT EXISTS idx_cal_account ON calendar_events(account_email);
+        CREATE INDEX IF NOT EXISTS idx_orders_status ON song_orders(status);
+        CREATE INDEX IF NOT EXISTS idx_orders_event_date ON song_orders(event_date);
+    """)
+    conn.commit()
 
 
 def store_email(email: dict):
