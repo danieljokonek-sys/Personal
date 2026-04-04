@@ -6,12 +6,15 @@ Processes batches of emails through Claude to extract:
 - Deadlines and due dates
 - Financial obligations (who owes what, to which entity)
 - Action items
+- Chorus Crafters song orders (dedicated extraction pass)
 """
 import json
 import anthropic
 from datetime import date
 
 from .entities import Entity
+from .orders import OrderExtractor
+from . import database as db
 
 
 EXTRACTION_SYSTEM_PROMPT = """You are a personal assistant AI that analyzes email communications for a musician/entrepreneur who runs multiple businesses:
@@ -119,6 +122,7 @@ class Analyzer:
         self.client = anthropic.Anthropic()
         self.entities = entities
         self.model = model
+        self._order_extractor = OrderExtractor(model=model)
 
     def _build_entities_description(self) -> str:
         parts = []
@@ -130,7 +134,11 @@ class Analyzer:
         return "\n".join(parts)
 
     def analyze_batch(self, emails: list[dict]) -> dict:
-        """Analyze a batch of emails and return extractions keyed by email ID."""
+        """Analyze a batch of emails and return extractions keyed by email ID.
+
+        Also runs a dedicated Chorus Crafters order extraction pass on any
+        email classified as chorus_crafters.
+        """
         if not emails:
             return {}
 
@@ -166,12 +174,27 @@ class Analyzer:
             messages=[{"role": "user", "content": user_prompt}],
         )
 
-        # Extract JSON from response
+        results = {}
         for block in response.content:
             if block.type == "text":
-                return self._parse_json_response(block.text)
+                results = self._parse_json_response(block.text)
+                break
 
-        return {}
+        # Second pass: dedicated order extraction for Chorus Crafters emails
+        for email in emails:
+            entity_key = (
+                results.get(email["id"], {}).get("entity_key")
+                or email.get("entity_key")
+            )
+            if entity_key == "chorus_crafters":
+                order_data = self._order_extractor.extract_from_email(email)
+                if order_data:
+                    order_id = db.upsert_song_order(order_data)
+                    # Tag extraction result so caller knows an order was created
+                    if email["id"] in results:
+                        results[email["id"]]["song_order_id"] = order_id
+
+        return results
 
     def _parse_json_response(self, text: str) -> dict:
         """Parse JSON from Claude's response, handling markdown code blocks."""

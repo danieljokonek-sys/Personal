@@ -95,6 +95,58 @@ def init_db():
             updated_at TEXT DEFAULT CURRENT_TIMESTAMP
         );
 
+        -- Chorus Crafters: custom song order pipeline
+        CREATE TABLE IF NOT EXISTS song_orders (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+            -- Source traceability
+            email_id TEXT REFERENCES emails(id),
+
+            -- Client
+            client_name TEXT,
+            client_email TEXT,
+            client_phone TEXT,
+
+            -- Event
+            event_type TEXT,      -- wedding | memorial | birthday | anniversary | other
+            event_date TEXT,      -- YYYY-MM-DD, the performance/occasion date
+            honoree_names TEXT,   -- "John & Jane Smith", "In Memory of Bob"
+            event_notes TEXT,     -- venue, context, anything else
+
+            -- Song brief
+            song_style TEXT,      -- genre, mood, vibe, instrumentation
+            song_story TEXT,      -- the narrative / details to weave in
+            reference_songs TEXT, -- JSON array of reference track titles/artists
+
+            -- Revisions
+            revisions_included INTEGER DEFAULT 2,
+            revisions_used INTEGER DEFAULT 0,
+
+            -- Financials
+            price REAL,
+            deposit_amount REAL,
+            deposit_paid INTEGER DEFAULT 0,   -- 0/1 boolean
+            deposit_date TEXT,
+            balance_due REAL,
+            balance_paid INTEGER DEFAULT 0,
+            balance_date TEXT,
+
+            -- Delivery milestones
+            demo_delivered INTEGER DEFAULT 0,
+            demo_date TEXT,
+            final_delivered INTEGER DEFAULT 0,
+            final_date TEXT,
+
+            -- Status pipeline:
+            -- inquiry → quoted → deposit_received → in_production →
+            -- revision_requested → in_revision → delivered → complete | cancelled
+            status TEXT DEFAULT 'inquiry',
+
+            notes TEXT,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+        );
+
         CREATE INDEX IF NOT EXISTS idx_emails_entity ON emails(entity_key);
         CREATE INDEX IF NOT EXISTS idx_emails_date ON emails(date);
         CREATE INDEX IF NOT EXISTS idx_deadlines_due ON deadlines(due_date);
@@ -102,6 +154,8 @@ def init_db():
         CREATE INDEX IF NOT EXISTS idx_financial_status ON financial_items(status);
         CREATE INDEX IF NOT EXISTS idx_financial_direction ON financial_items(direction);
         CREATE INDEX IF NOT EXISTS idx_action_status ON action_items(status);
+        CREATE INDEX IF NOT EXISTS idx_orders_status ON song_orders(status);
+        CREATE INDEX IF NOT EXISTS idx_orders_event_date ON song_orders(event_date);
     """)
     conn.commit()
     conn.close()
@@ -310,9 +364,187 @@ def update_item_status(table: str, item_id: int, status: str):
     conn.close()
 
 
+# ── Song Orders (Chorus Crafters) ─────────────────────────────────────────────
+
+ACTIVE_ORDER_STATUSES = (
+    "inquiry", "quoted", "deposit_received",
+    "in_production", "revision_requested", "in_revision", "delivered",
+)
+
+
+def upsert_song_order(order: dict) -> int:
+    """Insert or update a song order. Returns the row id."""
+    conn = get_connection()
+    now = datetime.utcnow().isoformat()
+
+    # Try to match an existing order by client email + event date, or client name
+    existing_id = None
+    if order.get("client_email") and order.get("event_date"):
+        row = conn.execute(
+            "SELECT id FROM song_orders WHERE client_email = ? AND event_date = ?",
+            (order["client_email"], order["event_date"]),
+        ).fetchone()
+        existing_id = row["id"] if row else None
+
+    if not existing_id and order.get("client_name") and order.get("event_date"):
+        row = conn.execute(
+            "SELECT id FROM song_orders WHERE client_name = ? AND event_date = ?",
+            (order["client_name"], order["event_date"]),
+        ).fetchone()
+        existing_id = row["id"] if row else None
+
+    if existing_id:
+        # Update non-null fields only
+        fields = [
+            "client_name", "client_email", "client_phone",
+            "event_type", "event_date", "honoree_names", "event_notes",
+            "song_style", "song_story", "reference_songs",
+            "revisions_included", "price", "deposit_amount",
+            "balance_due", "notes", "status",
+        ]
+        updates = {f: order[f] for f in fields if f in order and order[f] is not None}
+        if updates:
+            set_clause = ", ".join(f"{k} = ?" for k in updates)
+            conn.execute(
+                f"UPDATE song_orders SET {set_clause}, updated_at = ? WHERE id = ?",
+                [*updates.values(), now, existing_id],
+            )
+        conn.commit()
+        conn.close()
+        return existing_id
+    else:
+        cur = conn.execute(
+            """INSERT INTO song_orders (
+                email_id, client_name, client_email, client_phone,
+                event_type, event_date, honoree_names, event_notes,
+                song_style, song_story, reference_songs,
+                revisions_included, price, deposit_amount, balance_due,
+                status, notes, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (
+                order.get("email_id"),
+                order.get("client_name"),
+                order.get("client_email"),
+                order.get("client_phone"),
+                order.get("event_type"),
+                order.get("event_date"),
+                order.get("honoree_names"),
+                order.get("event_notes"),
+                order.get("song_style"),
+                order.get("song_story"),
+                json.dumps(order.get("reference_songs", [])),
+                order.get("revisions_included", 2),
+                order.get("price"),
+                order.get("deposit_amount"),
+                order.get("balance_due"),
+                order.get("status", "inquiry"),
+                order.get("notes"),
+                now,
+                now,
+            ),
+        )
+        conn.commit()
+        new_id = cur.lastrowid
+        conn.close()
+        return new_id
+
+
+def update_order(order_id: int, fields: dict):
+    """Update specific fields on a song order."""
+    allowed = {
+        "client_name", "client_email", "client_phone",
+        "event_type", "event_date", "honoree_names", "event_notes",
+        "song_style", "song_story", "reference_songs",
+        "revisions_included", "revisions_used",
+        "price", "deposit_amount", "deposit_paid", "deposit_date",
+        "balance_due", "balance_paid", "balance_date",
+        "demo_delivered", "demo_date", "final_delivered", "final_date",
+        "status", "notes",
+    }
+    updates = {k: v for k, v in fields.items() if k in allowed}
+    if not updates:
+        return
+    conn = get_connection()
+    set_clause = ", ".join(f"{k} = ?" for k in updates)
+    conn.execute(
+        f"UPDATE song_orders SET {set_clause}, updated_at = ? WHERE id = ?",
+        [*updates.values(), datetime.utcnow().isoformat(), order_id],
+    )
+    conn.commit()
+    conn.close()
+
+
+def get_order(order_id: int) -> Optional[dict]:
+    conn = get_connection()
+    row = conn.execute("SELECT * FROM song_orders WHERE id = ?", (order_id,)).fetchone()
+    conn.close()
+    return dict(row) if row else None
+
+
+def get_active_orders() -> list[dict]:
+    placeholders = ",".join("?" * len(ACTIVE_ORDER_STATUSES))
+    conn = get_connection()
+    rows = conn.execute(
+        f"SELECT * FROM song_orders WHERE status IN ({placeholders}) ORDER BY event_date ASC NULLS LAST",
+        ACTIVE_ORDER_STATUSES,
+    ).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+def get_orders_by_status(status: str) -> list[dict]:
+    conn = get_connection()
+    rows = conn.execute(
+        "SELECT * FROM song_orders WHERE status = ? ORDER BY event_date ASC NULLS LAST",
+        (status,),
+    ).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+def get_all_orders(include_closed: bool = False) -> list[dict]:
+    conn = get_connection()
+    if include_closed:
+        rows = conn.execute(
+            "SELECT * FROM song_orders ORDER BY event_date ASC NULLS LAST"
+        ).fetchall()
+    else:
+        placeholders = ",".join("?" * len(ACTIVE_ORDER_STATUSES))
+        rows = conn.execute(
+            f"SELECT * FROM song_orders WHERE status IN ({placeholders}) ORDER BY event_date ASC NULLS LAST",
+            ACTIVE_ORDER_STATUSES,
+        ).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+def get_orders_pipeline_summary() -> dict:
+    """Revenue and count breakdown by status for the Chorus Crafters pipeline."""
+    conn = get_connection()
+    rows = conn.execute(
+        """SELECT status,
+                  COUNT(*) as count,
+                  COALESCE(SUM(price), 0) as total_value,
+                  COALESCE(SUM(CASE WHEN deposit_paid = 1 THEN deposit_amount ELSE 0 END), 0) as deposits_collected,
+                  COALESCE(SUM(CASE WHEN balance_paid = 1 THEN balance_due ELSE 0 END), 0) as balances_collected
+           FROM song_orders
+           WHERE status NOT IN ('cancelled')
+           GROUP BY status"""
+    ).fetchall()
+    conn.close()
+    return {r["status"]: dict(r) for r in rows}
+
+
 def get_dashboard_summary() -> dict:
     """Get counts for the status dashboard."""
     conn = get_connection()
+
+    placeholders = ",".join("?" * len(ACTIVE_ORDER_STATUSES))
+    active_orders_row = conn.execute(
+        f"SELECT COUNT(*) c, COALESCE(SUM(price),0) v FROM song_orders WHERE status IN ({placeholders})",
+        ACTIVE_ORDER_STATUSES,
+    ).fetchone()
+
     summary = {
         "total_emails": conn.execute("SELECT COUNT(*) c FROM emails").fetchone()["c"],
         "unprocessed_emails": conn.execute(
@@ -333,6 +565,8 @@ def get_dashboard_summary() -> dict:
         "pending_actions": conn.execute(
             "SELECT COUNT(*) c FROM action_items WHERE status = 'pending'"
         ).fetchone()["c"],
+        "active_song_orders": active_orders_row["c"],
+        "song_orders_pipeline_value": active_orders_row["v"],
     }
     conn.close()
     return summary
