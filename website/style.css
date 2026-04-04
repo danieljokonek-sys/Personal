@@ -284,6 +284,7 @@ em { font-style: italic; }
   letter-spacing: 0.22em;
   text-transform: uppercase;
   color: var(--text-muted);
+  text-shadow: 0 1px 8px rgba(10, 9, 6, 0.9);
 }
 
 /* Name — large, left-aligned */
@@ -296,6 +297,7 @@ em { font-style: italic; }
   letter-spacing: -0.03em;
   color: var(--text);
   margin-bottom: 3rem;
+  text-shadow: 0 2px 24px rgba(10, 9, 6, 0.7), 0 1px 4px rgba(10, 9, 6, 0.9);
 }
 
 /* Glitch — fires rarely */
@@ -338,10 +340,10 @@ em { font-style: italic; }
   inset: 0;
   background: linear-gradient(
     to bottom,
-    rgba(22, 20, 15, 0.55) 0%,
-    rgba(22, 20, 15, 0.35) 40%,
-    rgba(22, 20, 15, 0.72) 75%,
-    rgba(22, 20, 15, 0.97) 100%
+    rgba(22, 20, 15, 0.65) 0%,
+    rgba(22, 20, 15, 0.45) 35%,
+    rgba(22, 20, 15, 0.82) 70%,
+    rgba(22, 20, 15, 1.0) 100%
   );
   z-index: 1;
   pointer-events: none;
@@ -381,6 +383,7 @@ em { font-style: italic; }
   text-transform: uppercase;
   color: var(--accent);
   transition: gap 0.25s ease;
+  text-shadow: 0 1px 8px rgba(10, 9, 6, 0.8);
 }
 .hero-cta svg { width: 18px; height: 18px; transition: transform 0.25s ease; }
 .hero-cta:hover { gap: 0.9rem; }
