@@ -4,6 +4,33 @@
    Layout: editorial rows · left-aligned hero · minimal swim.art energy
    ============================================================ */
 
+/* ------------------------------------------------------------
+   Custom Fonts
+   ------------------------------------------------------------ */
+@font-face {
+  font-family: 'That That New Pixel';
+  src: url('fonts/That-That-New-Pixel-Square.otf') format('opentype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Ingram Mono';
+  src: url('fonts/Ingram-Mono-Regular.otf') format('opentype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'SF Pro Text';
+  src: url('fonts/sf-pro-text-semibold.ttf') format('truetype');
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
 :root {
   --bg:          #16140f;
   --bg-raised:   #1d1b14;
@@ -20,8 +47,10 @@
   --glow-amber:  rgba(200, 120, 74, 0.09);
   --glow-violet: rgba(100, 60, 140, 0.05);
 
-  --font-display: 'Cormorant Garamond', Georgia, serif;
-  --font-ui:      'Space Grotesk', system-ui, sans-serif;
+  --font-display: 'Cormorant Garamond', Georgia, serif;  /* pull quote, about name, contact */
+  --font-pixel:   'That That New Pixel', monospace;      /* hero name, brand marks */
+  --font-mono:    'Ingram Mono', 'Space Grotesk', monospace; /* nav, labels, prices, UI */
+  --font-body:    'SF Pro Text', system-ui, sans-serif;  /* body text, service names */
 
   --max-w:        1120px;
   --pad-x:        clamp(1.5rem, 5vw, 4rem);
@@ -129,6 +158,7 @@ em { font-style: italic; }
   margin-bottom: clamp(3rem, 6vw, 5rem);
 }
 .section-label {
+  font-family: var(--font-mono);
   font-size: 0.68rem;
   font-weight: 500;
   letter-spacing: 0.22em;
@@ -177,6 +207,7 @@ em { font-style: italic; }
 
 .nav-links { display: flex; gap: 2.5rem; align-items: center; }
 .nav-links a {
+  font-family: var(--font-mono);
   font-size: 0.7rem;
   font-weight: 500;
   letter-spacing: 0.15em;
@@ -247,6 +278,7 @@ em { font-style: italic; }
   50%       { transform: translateY(-6px); }
 }
 .hero-eyebrow span {
+  font-family: var(--font-mono);
   font-size: 0.7rem;
   font-weight: 400;
   letter-spacing: 0.22em;
@@ -257,7 +289,7 @@ em { font-style: italic; }
 /* Name — large, left-aligned */
 .hero-name {
   position: relative;
-  font-family: var(--font-display);
+  font-family: var(--font-pixel);
   font-size: clamp(5rem, 14vw, 12rem);
   font-weight: 300;
   line-height: 0.88;
@@ -289,6 +321,7 @@ em { font-style: italic; }
   display: inline-flex;
   align-items: center;
   gap: 0.6rem;
+  font-family: var(--font-mono);
   font-size: 0.72rem;
   font-weight: 500;
   letter-spacing: 0.18em;
@@ -318,6 +351,7 @@ em { font-style: italic; }
   animation: marquee 30s linear infinite;
 }
 .marquee-track span {
+  font-family: var(--font-mono);
   font-size: 0.67rem;
   font-weight: 400;
   letter-spacing: 0.18em;
@@ -382,6 +416,7 @@ em { font-style: italic; }
 .svc-head:hover .svc-title { color: var(--accent); }
 
 .svc-num {
+  font-family: var(--font-mono);
   font-size: 0.62rem;
   font-weight: 500;
   letter-spacing: 0.2em;
@@ -416,7 +451,7 @@ em { font-style: italic; }
 }
 
 .svc-price {
-  font-family: var(--font-display);
+  font-family: var(--font-mono);
   font-size: clamp(1rem, 1.8vw, 1.4rem);
   font-weight: 600;
   color: var(--accent);
@@ -489,6 +524,7 @@ em { font-style: italic; }
 
 .service-list { display: flex; flex-direction: column; gap: 0.5rem; grid-column: span 2; }
 .service-list li {
+  font-family: var(--font-body);
   font-size: 0.82rem;
   color: var(--text-muted);
   padding-left: 1.2rem;
@@ -544,7 +580,7 @@ em { font-style: italic; }
   color: var(--text);
 }
 .additional-pricing { display: flex; flex-direction: column; gap: 0.2rem; }
-.additional-desc { font-size: 0.85rem; color: var(--text-muted); line-height: 1.65; }
+.additional-desc { font-family: var(--font-body); font-size: 0.85rem; color: var(--text-muted); line-height: 1.65; }
 
 /* ------------------------------------------------------------
    About
@@ -588,7 +624,7 @@ em { font-style: italic; }
 }
 
 .about-body { display: flex; flex-direction: column; gap: 1.4rem; }
-.about-body p { font-size: 0.95rem; line-height: 1.85; color: var(--text-muted); }
+.about-body p { font-family: var(--font-body); font-size: 0.95rem; line-height: 1.85; color: var(--text-muted); }
 .about-body em     { color: var(--text); font-style: italic; }
 .about-body strong { color: var(--text); font-weight: 500; }
 
@@ -649,6 +685,7 @@ em { font-style: italic; }
 }
 .contact-heading em { color: var(--accent); font-style: italic; }
 .contact-sub {
+  font-family: var(--font-body);
   font-size: 0.88rem;
   color: var(--text-muted);
   max-width: 380px;
@@ -656,6 +693,7 @@ em { font-style: italic; }
 }
 .contact-btn {
   display: inline-block;
+  font-family: var(--font-mono);
   font-size: 0.72rem;
   font-weight: 500;
   letter-spacing: 0.16em;
@@ -727,6 +765,7 @@ em { font-style: italic; }
 }
 
 .player-label {
+  font-family: var(--font-mono);
   font-size: 0.68rem;
   font-weight: 500;
   letter-spacing: 0.2em;
