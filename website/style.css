@@ -159,7 +159,7 @@ em { font-style: italic; }
 }
 .section-label {
   font-family: var(--font-mono);
-  font-size: 0.68rem;
+  font-size: 0.78rem;
   font-weight: 500;
   letter-spacing: 0.22em;
   text-transform: uppercase;
@@ -208,7 +208,7 @@ em { font-style: italic; }
 .nav-links { display: flex; gap: 2.5rem; align-items: center; }
 .nav-links a {
   font-family: var(--font-mono);
-  font-size: 0.7rem;
+  font-size: 0.78rem;
   font-weight: 500;
   letter-spacing: 0.15em;
   text-transform: uppercase;
@@ -279,7 +279,7 @@ em { font-style: italic; }
 }
 .hero-eyebrow span {
   font-family: var(--font-mono);
-  font-size: 0.7rem;
+  font-size: 0.82rem;
   font-weight: 400;
   letter-spacing: 0.22em;
   text-transform: uppercase;
@@ -377,7 +377,7 @@ em { font-style: italic; }
   align-items: center;
   gap: 0.6rem;
   font-family: var(--font-mono);
-  font-size: 0.72rem;
+  font-size: 0.82rem;
   font-weight: 500;
   letter-spacing: 0.18em;
   text-transform: uppercase;
@@ -408,7 +408,7 @@ em { font-style: italic; }
 }
 .marquee-track span {
   font-family: var(--font-mono);
-  font-size: 0.67rem;
+  font-size: 0.78rem;
   font-weight: 400;
   letter-spacing: 0.18em;
   text-transform: uppercase;
@@ -425,6 +425,57 @@ em { font-style: italic; }
 @keyframes marquee {
   from { transform: translateX(0); }
   to   { transform: translateX(-33.333%); }
+}
+
+/* ------------------------------------------------------------
+   Image glitch effect
+   ------------------------------------------------------------ */
+@keyframes img-glitch {
+  0%   { transform: translate(0,0);      clip-path: none;               filter: none; }
+  8%   { transform: translate(-6px, 1px); clip-path: inset(8% 0 78% 0);  filter: hue-rotate(80deg) brightness(1.25); }
+  14%  { transform: translate(6px, -1px); clip-path: inset(62% 0 18% 0); filter: hue-rotate(-60deg) saturate(2); }
+  18%  { transform: translate(-3px, 0);  clip-path: none;               filter: brightness(1.4) saturate(0.5); }
+  24%  { transform: translate(5px, 2px); clip-path: inset(38% 0 44% 0);  filter: hue-rotate(160deg); }
+  30%  { transform: translate(0,0);      clip-path: none;               filter: brightness(1.1); }
+  36%  { transform: translate(-4px, 0);  clip-path: inset(75% 0 8% 0);  filter: hue-rotate(30deg) brightness(0.85); }
+  42%  { transform: translate(3px, -2px);clip-path: none;               filter: saturate(3) brightness(1.2); }
+  50%  { transform: translate(-2px, 1px);clip-path: inset(22% 0 60% 0); filter: hue-rotate(-90deg); }
+  58%  { transform: translate(0,0);      clip-path: none;               filter: none; }
+  68%  { transform: translate(2px, 0);   filter: hue-rotate(20deg); }
+  80%  { transform: translate(0,0);      filter: none; }
+  100% { transform: translate(0,0);      clip-path: none;               filter: none; }
+}
+
+/* Applied to hero bg img */
+.hero-bg-img.is-glitching {
+  animation: img-glitch 0.55s steps(1) forwards;
+}
+
+/* Applied to work-item container — img inside gets the glitch */
+.work-item.is-glitching .work-fig img {
+  animation: img-glitch 0.45s steps(1) forwards;
+}
+
+/* Brief scan-line flash overlay during glitch */
+.work-item.is-glitching::after,
+.hero-bg.is-glitching-wrap::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 3px,
+    rgba(0,0,0,0.18) 3px,
+    rgba(0,0,0,0.18) 4px
+  );
+  pointer-events: none;
+  z-index: 2;
+  animation: scanline-flash 0.55s steps(1) forwards;
+}
+@keyframes scanline-flash {
+  0%, 60%, 100% { opacity: 0; }
+  8%, 24%, 42%  { opacity: 1; }
 }
 
 /* ------------------------------------------------------------
@@ -793,7 +844,7 @@ em { font-style: italic; }
   color: var(--text);
 }
 .additional-pricing { display: flex; flex-direction: column; gap: 0.2rem; }
-.additional-desc { font-family: var(--font-body); font-size: 0.85rem; color: var(--text-muted); line-height: 1.65; }
+.additional-desc { font-family: var(--font-body); font-size: 0.95rem; color: var(--text-muted); line-height: 1.65; }
 
 /* ------------------------------------------------------------
    About
@@ -881,7 +932,7 @@ em { font-style: italic; }
 }
 
 .about-body { display: flex; flex-direction: column; gap: 1.4rem; }
-.about-body p { font-family: var(--font-body); font-size: 0.95rem; line-height: 1.85; color: var(--text-muted); }
+.about-body p { font-family: var(--font-body); font-size: 1.05rem; line-height: 1.85; color: var(--text-muted); }
 .about-body em     { color: var(--text); font-style: italic; }
 .about-body strong { color: var(--text); font-weight: 500; }
 
@@ -943,7 +994,7 @@ em { font-style: italic; }
 .contact-heading em { color: var(--accent); font-style: italic; }
 .contact-sub {
   font-family: var(--font-body);
-  font-size: 0.88rem;
+  font-size: 1rem;
   color: var(--text-muted);
   max-width: 380px;
   line-height: 1.75;
@@ -951,7 +1002,7 @@ em { font-style: italic; }
 .contact-btn {
   display: inline-block;
   font-family: var(--font-mono);
-  font-size: 0.72rem;
+  font-size: 0.82rem;
   font-weight: 500;
   letter-spacing: 0.16em;
   text-transform: uppercase;
@@ -1023,7 +1074,7 @@ em { font-style: italic; }
 
 .player-label {
   font-family: var(--font-mono);
-  font-size: 0.68rem;
+  font-size: 0.78rem;
   font-weight: 500;
   letter-spacing: 0.2em;
   text-transform: uppercase;
@@ -1111,7 +1162,7 @@ em { font-style: italic; }
   .service-footnote { grid-column: span 1; }
   .hero-bg-mark { display: none; }
   .nav-links { gap: 1.5rem; }
-  .nav-links a { font-size: 0.65rem; }
+  .nav-links a { font-size: 0.72rem; }
   .about-quote { font-size: clamp(1.2rem, 4vw, 1.8rem); }
   .about-spread { padding: 0 var(--pad-x); }
   .about-photo-col { max-width: 100%; }

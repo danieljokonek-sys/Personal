@@ -95,6 +95,38 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Escape' && vidModal?.classList.contains('is-open')) closeVidModal();
 });
 
+// --- Random image glitch loop ---
+(function() {
+  const heroBg   = document.getElementById('hero-bg-img');
+  const heroBgWrap = heroBg?.closest('.hero-bg');
+  const workItems = Array.from(document.querySelectorAll('.work-item[data-vid]'));
+
+  function glitchRandom() {
+    // Pool: hero bg + all video thumbnails
+    const pool = [];
+    if (heroBg) pool.push({ el: heroBg, wrap: heroBgWrap, cls: 'is-glitching', wrapCls: 'is-glitching-wrap' });
+    workItems.forEach(item => pool.push({ el: item, cls: 'is-glitching' }));
+
+    if (!pool.length) return;
+
+    const target = pool[Math.floor(Math.random() * pool.length)];
+    target.el.classList.add(target.cls);
+    if (target.wrap && target.wrapCls) target.wrap.classList.add(target.wrapCls);
+
+    // Clean up after animation
+    setTimeout(() => {
+      target.el.classList.remove(target.cls);
+      if (target.wrap && target.wrapCls) target.wrap.classList.remove(target.wrapCls);
+    }, 600);
+
+    // Schedule next glitch at random 5–10s interval
+    setTimeout(glitchRandom, 5000 + Math.random() * 5000);
+  }
+
+  // First glitch after a short delay
+  setTimeout(glitchRandom, 3000 + Math.random() * 3000);
+})();
+
 // --- Persistent Spotify player toggle ---
 const playerBar    = document.getElementById('player-bar');
 const playerToggle = document.getElementById('player-toggle');
