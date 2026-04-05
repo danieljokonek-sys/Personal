@@ -1244,14 +1244,22 @@ def organize_inbox(dry_run, max_emails, account):
 @click.option("--account", default=None, help="Process only this account email")
 @click.option("--all-mail", is_flag=True, help="Process ALL mail (not just inbox) for comprehensive cleanup")
 @click.option("--model", default=None, help="Override model (e.g. claude-haiku-4-5-20251001 for cheaper runs)")
-def organize_history(dry_run, batch_size, max_pages, account, all_mail, model):
+@click.option("--delete-older-than", default=None, type=int, help="Delete non-vital emails older than N months (vital = contracts, keys, licenses, business, tax, etc.)")
+def organize_history(dry_run, batch_size, max_pages, account, all_mail, model, delete_older_than):
     """Deep-clean historical email — pages through inbox or all mail."""
     config = get_config()
     init_db()
+    delete_days = delete_older_than * 30 if delete_older_than else None
+    if delete_days:
+        from src.organizer import VITAL_CATEGORIES
+        console.print(f"\n[bold yellow]Retention policy: delete non-vital emails older than {delete_older_than} months[/bold yellow]")
+        console.print(f"[green]Protected categories (never deleted):[/green] {', '.join(sorted(VITAL_CATEGORIES))}")
+        console.print()
     _do_organize_history(
         config, dry_run=dry_run, batch_size=batch_size,
         max_pages=max_pages, account_filter=account,
         all_mail=all_mail, model_override=model,
+        delete_older_than_days=delete_days,
     )
 
 
@@ -1352,6 +1360,7 @@ def _do_organize(config, dry_run=False, max_emails=100, account_filter=None):
 def _do_organize_history(
     config, dry_run=False, batch_size=50, max_pages=20,
     account_filter=None, all_mail=False, model_override=None,
+    delete_older_than_days=None,
 ):
     """Page through email history and organize everything.
 
@@ -1408,7 +1417,10 @@ def _do_organize_history(
                     break
 
             console.print(f"  Classifying {len(new_emails)} new emails...")
-            stats, classifications = organizer.classify_and_act(new_emails, client, dry_run=dry_run)
+            stats, classifications = organizer.classify_and_act(
+                new_emails, client, dry_run=dry_run,
+                delete_older_than_days=delete_older_than_days,
+            )
 
             for key in total_stats:
                 total_stats[key] += stats[key]

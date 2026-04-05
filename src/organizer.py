@@ -9,6 +9,7 @@ Works on both historical inbox cleanup and ongoing new-email triage.
 import json
 import logging
 import anthropic
+from datetime import datetime, timedelta, timezone
 from datetime import date
 
 log = logging.getLogger("organizer")
@@ -55,6 +56,33 @@ KEEP_CATEGORIES = [
 JUNK_CATEGORIES = [
     "Junk",
 ]
+
+# Vital categories — NEVER deleted regardless of age.
+# Everything else older than the retention window gets trashed.
+VITAL_CATEGORIES = {
+    # Business — all correspondence is important
+    "Audio Services",
+    "Terra Cognita",
+    "Well Made Plays",
+    "The Chorus Crafters",
+    # Property — leases, tenant records, contracts
+    "4400 Mount Vernon Drive",
+    "2300 Southern Oaks",
+    # Finance — tax docs, bank statements
+    "Tax",
+    "Banking and Investments",
+    # Legal — contracts, agreements, legal notices
+    "Legal",
+    # Shopping — licenses, keys, product downloads (activation codes, serial numbers)
+    "Licenses and Keys",
+    "Product Downloads",
+    # Security — recovery codes, backup codes
+    "Account Security",
+    # Health — insurance policies, medical records
+    "Health and Insurance",
+    # Employment — HR, payroll, benefits (W-2s, offer letters)
+    "Employment",
+}
 
 ALL_CATEGORIES = KEEP_CATEGORIES + JUNK_CATEGORIES
 
@@ -278,8 +306,16 @@ class EmailOrganizer:
 
         return {}
 
-    def classify_and_act(self, emails: list[dict], gmail_client, dry_run: bool = False) -> dict:
+    def classify_and_act(
+        self, emails: list[dict], gmail_client,
+        dry_run: bool = False, delete_older_than_days: int | None = None,
+    ) -> dict:
         """Classify a batch of emails and apply Gmail labels/actions.
+
+        Args:
+            delete_older_than_days: If set, emails older than this many days
+                are trashed UNLESS they're in a VITAL_CATEGORIES category.
+                Vital emails still get labeled and kept.
 
         Returns (stats, classifications).
         """
@@ -288,28 +324,56 @@ class EmailOrganizer:
 
         email_map = {e["id"]: e for e in emails}
 
+        # Compute age cutoff if retention policy is active
+        cutoff = None
+        if delete_older_than_days:
+            cutoff = datetime.now(timezone.utc) - timedelta(days=delete_older_than_days)
+
         for email_id, result in classifications.items():
-            category = result.get("category", "Important")
+            category = result.get("category", "Personal")
             action = result.get("action", "label")
             confidence = result.get("confidence", "medium")
 
             # Junk → auto-delete, no label
             is_junk = category in JUNK_CATEGORIES
 
+            # Check if email is old and non-vital → trash it
+            is_old_and_disposable = False
+            if cutoff and not is_junk:
+                email_date_str = email_map.get(email_id, {}).get("date", "")
+                try:
+                    email_date = datetime.fromisoformat(email_date_str)
+                    if email_date.tzinfo is None:
+                        email_date = email_date.replace(tzinfo=timezone.utc)
+                    if email_date < cutoff and category not in VITAL_CATEGORIES:
+                        is_old_and_disposable = True
+                except (ValueError, TypeError):
+                    pass
+
             # Safety: never trash with low confidence
-            if is_junk and confidence == "low":
-                action = "archive"  # demote to archive instead of delete
+            if (is_junk or is_old_and_disposable) and confidence == "low":
+                is_old_and_disposable = False
+                if is_junk:
+                    action = "archive"
 
             if dry_run:
                 subj = email_map.get(email_id, {}).get("subject", "?")
-                fate = "DELETE" if is_junk else action
+                if is_junk:
+                    fate = "DELETE (junk)"
+                elif is_old_and_disposable:
+                    fate = "DELETE (old, non-vital)"
+                else:
+                    fate = action
                 log.info(f"[DRY RUN] {email_id}: {category} → {fate} ({confidence}) — {subj}")
-                stats["trashed" if is_junk else "labeled"] += 1
+                stats["trashed" if (is_junk or is_old_and_disposable) else "labeled"] += 1
                 continue
 
             try:
                 if is_junk:
-                    # Trash directly — no label
+                    gmail_client.trash_email(email_id)
+                    stats["trashed"] += 1
+                elif is_old_and_disposable:
+                    # Trash old non-vital email — no label needed
                     gmail_client.trash_email(email_id)
                     stats["trashed"] += 1
                 else:
