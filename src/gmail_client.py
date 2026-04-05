@@ -196,6 +196,12 @@ class GmailClient:
                     except Exception:
                         pass
                 return label["id"]
+        # Ensure parent labels exist for nested paths (e.g. "Business" for "Business/Terra Cognita")
+        if "/" in name:
+            parent = name.rsplit("/", 1)[0]
+            if parent not in self._label_cache:
+                self.get_or_create_label(parent)  # recursive — creates grandparents too
+
         # Create it
         body: dict = {
             "name": name,
