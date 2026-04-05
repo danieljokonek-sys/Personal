@@ -1665,5 +1665,42 @@ def organize_migrate_labels(dry_run, model):
     console.print(f"  {len(labels_deleted)} old labels deleted: {', '.join(labels_deleted)}")
 
 
+@organize.command(name="fix-parents")
+def organize_fix_parents():
+    """Create missing parent labels so Gmail shows collapsible groups."""
+    config = get_config()
+    init_db()
+
+    clients = build_clients(config)
+    client = next(
+        (c for c in clients if c.account_email == "danieljokonek@gmail.com"), None
+    )
+    if not client:
+        console.print("[red]Could not find danieljokonek@gmail.com account.[/red]")
+        return
+    client.authenticate()
+
+    all_labels = client.list_labels()
+    existing_names = {l["name"] for l in all_labels}
+
+    # Find all parent paths that need to exist
+    parents_needed = set()
+    for name in existing_names:
+        if "/" in name:
+            parent = name.rsplit("/", 1)[0]
+            if parent not in existing_names:
+                parents_needed.add(parent)
+
+    if not parents_needed:
+        console.print("[green]All parent labels already exist. Gmail should show them as expandable.[/green]")
+        return
+
+    for parent in sorted(parents_needed):
+        console.print(f"  Creating parent label: [bold]{parent}[/bold]")
+        client.get_or_create_label(parent)
+
+    console.print(f"\n[green]Created {len(parents_needed)} parent label(s). Refresh Gmail to see collapsible groups.[/green]")
+
+
 if __name__ == "__main__":
     cli()

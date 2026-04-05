@@ -178,6 +178,12 @@ class GmailClient:
             color: Optional dict with 'textColor' and 'backgroundColor'
                    using Gmail's allowed hex values.
         """
+        # Always ensure parent labels exist for nested paths first
+        if "/" in name:
+            parent = name.rsplit("/", 1)[0]
+            if parent not in self._label_cache:
+                self.get_or_create_label(parent)  # recursive — creates grandparents too
+
         if name in self._label_cache:
             return self._label_cache[name]
         if not self.service:
@@ -196,11 +202,6 @@ class GmailClient:
                     except Exception:
                         pass
                 return label["id"]
-        # Ensure parent labels exist for nested paths (e.g. "Business" for "Business/Terra Cognita")
-        if "/" in name:
-            parent = name.rsplit("/", 1)[0]
-            if parent not in self._label_cache:
-                self.get_or_create_label(parent)  # recursive — creates grandparents too
 
         # Create it
         body: dict = {
