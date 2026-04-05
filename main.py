@@ -1443,5 +1443,202 @@ def _do_organize_history(
         )
 
 
+# ── Label Migration ─────────────────────────────────────────────────────────
+
+# Static mapping: old label name → new category (or "TRASH" to delete emails,
+# "RECLASSIFY" to run through the classifier)
+LABEL_MIGRATION_MAP = {
+    # Old manual labels
+    "Travel":               "Travel",
+    "Travel/Flight Credits": "Travel",
+    "Financial Info":       "Finance",
+    "Music Production":     "RECLASSIFY",       # could be Audio Services, Terra Cognita, etc.
+    "Music & Events":       "RECLASSIFY",       # could be Terra Cognita, Well Made Plays, etc.
+    "Notes":                "Personal",
+    "Rental Management":    "4400 Mount Vernon Drive",
+    "House":                "4400 Mount Vernon Drive",
+    # Old Tracker/ prefixed labels
+    "Tracker/Terra Cognita":    "Terra Cognita",
+    "Tracker/Well Made Plays":  "Well Made Plays",
+    # Old Organized/ nested labels → flatten to top-level
+    "Organized/Important":              "RECLASSIFY",
+    "Organized/Logins and Verification": "Logins and Verification",
+    "Organized/Account Security":       "Account Security",
+    "Organized/Finance":                "Finance",
+    "Organized/Fees and Bills":         "Fees and Bills",
+    "Organized/Legal":                  "Legal",
+    "Organized/Shipping and Delivery":  "Shipping and Delivery",
+    "Organized/Travel":                 "Travel",
+    "Organized/Product Purchases":      "Product Purchases",
+    "Organized/Health and Insurance":   "Health and Insurance",
+    "Organized/Personal":               "Personal",
+    "Organized/Tax":                    "Tax",
+    "Organized/Politics":               "Politics",
+    # Old Organized/Junk/ labels → trash the emails
+    "Organized/Junk/Newsletter":        "TRASH",
+    "Organized/Junk/Automated Alert":   "TRASH",
+    "Organized/Junk/Political Junk":    "TRASH",
+    "Organized/Junk/Promotional":       "TRASH",
+    "Organized/Junk/Marketing":         "TRASH",
+    "Organized/Junk/Spam":              "TRASH",
+}
+
+
+@organize.command(name="migrate-labels")
+@click.option("--dry-run", is_flag=True, help="Preview changes without modifying Gmail")
+@click.option("--model", default=None, help="Model for reclassification")
+def organize_migrate_labels(dry_run, model):
+    """Migrate emails from old labels to the new system, then delete old labels."""
+    config = get_config()
+    init_db()
+
+    from src.organizer import LABEL_COLORS
+
+    clients = build_clients(config)
+    # Only operate on the personal account
+    client = next(
+        (c for c in clients if c.account_email == "danieljokonek@gmail.com"), None
+    )
+    if not client:
+        console.print("[red]Could not find danieljokonek@gmail.com account.[/red]")
+        return
+    client.authenticate()
+
+    organizer = _build_organizer(config, model_override=model)
+    all_labels = client.list_labels()
+
+    # Build lookup: name → {id, name, type}
+    label_lookup = {l["name"]: l for l in all_labels}
+
+    migrated_total = 0
+    trashed_total = 0
+    reclassified_total = 0
+    labels_deleted = []
+
+    for old_name, action in LABEL_MIGRATION_MAP.items():
+        label_info = label_lookup.get(old_name)
+        if not label_info:
+            continue  # label doesn't exist, skip
+
+        label_id = label_info["id"]
+        msg_ids = client.get_messages_by_label(label_id, max_results=5000)
+
+        if not msg_ids:
+            # Empty label — just delete it
+            if not dry_run:
+                try:
+                    client.delete_label(label_id)
+                    labels_deleted.append(old_name)
+                except Exception as e:
+                    log.warning(f"Failed to delete empty label '{old_name}': {e}")
+            else:
+                console.print(f"  [dim][DRY RUN] Delete empty label: {old_name}[/dim]")
+                labels_deleted.append(old_name)
+            continue
+
+        console.print(
+            f"\n[bold]{old_name}[/bold] → {action}  ({len(msg_ids)} emails)"
+        )
+
+        if action == "TRASH":
+            # Trash all emails under this junk label
+            for mid in msg_ids:
+                if not dry_run:
+                    try:
+                        client.trash_email(mid)
+                    except Exception as e:
+                        log.warning(f"  Trash failed {mid}: {e}")
+                trashed_total += 1
+            console.print(f"  {'[DRY RUN] ' if dry_run else ''}Trashed {len(msg_ids)} emails")
+
+        elif action == "RECLASSIFY":
+            # Fetch full email content and run through classifier
+            emails = []
+            for mid in msg_ids:
+                try:
+                    msg = client.service.users().messages().get(
+                        userId="me", id=mid, format="full"
+                    ).execute()
+                    parsed = client._parse_message(msg)
+                    if parsed:
+                        emails.append(parsed)
+                except Exception:
+                    continue
+
+            if emails:
+                # Process in batches
+                for i in range(0, len(emails), organizer.batch_size):
+                    batch = emails[i : i + organizer.batch_size]
+                    stats, classifications = organizer.classify_and_act(
+                        batch, client, dry_run=dry_run
+                    )
+                    reclassified_total += len(batch)
+
+                    if not dry_run:
+                        for email_id, result in classifications.items():
+                            store_organized_email(
+                                email_id=email_id,
+                                account_email=client.account_email,
+                                category=result.get("category", "Personal"),
+                                action=result.get("action", "label"),
+                                confidence=result.get("confidence", "medium"),
+                                reason=result.get("reason", ""),
+                            )
+
+                console.print(
+                    f"  {'[DRY RUN] ' if dry_run else ''}"
+                    f"Reclassified {len(emails)} emails"
+                )
+
+            # Remove old label from all messages
+            if not dry_run:
+                for mid in msg_ids:
+                    try:
+                        client.apply_labels_and_actions(
+                            mid, remove_label_ids=[label_id]
+                        )
+                    except Exception:
+                        pass
+
+        else:
+            # Direct mapping — apply new label, remove old one
+            new_color = LABEL_COLORS.get(action)
+            new_label_id = client.get_or_create_label(action, color=new_color)
+
+            for mid in msg_ids:
+                if not dry_run:
+                    try:
+                        client.apply_labels_and_actions(
+                            mid,
+                            add_label_ids=[new_label_id],
+                            remove_label_ids=[label_id],
+                        )
+                    except Exception as e:
+                        log.warning(f"  Migration failed {mid}: {e}")
+                migrated_total += 1
+
+            console.print(
+                f"  {'[DRY RUN] ' if dry_run else ''}"
+                f"Moved {len(msg_ids)} emails → {action}"
+            )
+
+        # Delete the old label after moving all emails out
+        if not dry_run:
+            try:
+                client.delete_label(label_id)
+                labels_deleted.append(old_name)
+            except Exception as e:
+                log.warning(f"  Failed to delete label '{old_name}': {e}")
+        else:
+            labels_deleted.append(old_name)
+
+    prefix = "[DRY RUN] " if dry_run else ""
+    console.print(f"\n[green]{prefix}Label migration complete:[/green]")
+    console.print(f"  {migrated_total} emails moved to new labels")
+    console.print(f"  {reclassified_total} emails reclassified by AI")
+    console.print(f"  {trashed_total} junk emails trashed")
+    console.print(f"  {len(labels_deleted)} old labels deleted: {', '.join(labels_deleted)}")
+
+
 if __name__ == "__main__":
     cli()

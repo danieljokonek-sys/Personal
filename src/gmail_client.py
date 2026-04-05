@@ -242,6 +242,43 @@ class GmailClient:
                 userId="me", id=message_id, body=body
             ).execute()
 
+    def list_labels(self) -> list[dict]:
+        """Return all labels (system + user) for this account."""
+        if not self.service:
+            self.authenticate()
+        result = self.service.users().labels().list(userId="me").execute()
+        return result.get("labels", [])
+
+    def get_messages_by_label(
+        self, label_id: str, max_results: int = 500
+    ) -> list[str]:
+        """Return message IDs that carry a given label."""
+        if not self.service:
+            self.authenticate()
+        ids: list[str] = []
+        page_token = None
+        while True:
+            kwargs: dict = {
+                "userId": "me",
+                "labelIds": [label_id],
+                "maxResults": min(max_results - len(ids), 500),
+            }
+            if page_token:
+                kwargs["pageToken"] = page_token
+            result = self.service.users().messages().list(**kwargs).execute()
+            for msg in result.get("messages", []):
+                ids.append(msg["id"])
+            page_token = result.get("nextPageToken")
+            if not page_token or len(ids) >= max_results:
+                break
+        return ids
+
+    def delete_label(self, label_id: str):
+        """Permanently delete a user label (does NOT delete the messages)."""
+        if not self.service:
+            self.authenticate()
+        self.service.users().labels().delete(userId="me", id=label_id).execute()
+
     def archive_email(self, message_id: str):
         """Archive a message (remove from INBOX)."""
         self.apply_labels_and_actions(message_id, remove_label_ids=["INBOX"])
