@@ -30,6 +30,7 @@ KEEP_CATEGORIES = [
     "Tax",
     "Fees and Bills",
     "Government",
+    "Politics",
     "Product Purchases",
     "Product Downloads",
     "Licenses and Keys",
@@ -53,7 +54,7 @@ JUNK_CATEGORIES = [
     "Spam",
     "Social Notification",
     "Automated Alert",
-    "Political",
+    "Political Junk",
 ]
 
 ALL_CATEGORIES = BUSINESS_CATEGORIES + KEEP_CATEGORIES + JUNK_CATEGORIES
@@ -75,6 +76,7 @@ OWNER'S EMAIL ACCOUNTS: {account_emails}
 - Tax: Tax documents, W-2s, 1099s, tax prep, IRS, state tax agencies, CPA correspondence, estimated tax payments, tax refunds
 - Fees and Bills: Subscription charges, utility bills, payment confirmations, bank fees, service charges, recurring charges, invoices you owe
 - Government: DMV, city/county/state/federal agencies, voter registration, jury duty, census, government benefits, USPS, passport
+- Politics: Genuine political correspondence — emails from elected officials or representatives you've contacted, policy updates from YOUR representatives, town hall invitations, constituent services, ballot/election info from official sources. NOT mass fundraising or campaign blasts
 - Product Purchases: Order confirmations, purchase receipts, warranty info, product registrations, digital and physical purchases from stores
 - Product Downloads: Software downloads, app purchase confirmations, digital product delivery, download links, installer access
 - Licenses and Keys: Software license keys, product activation codes, serial numbers, registration codes, API keys, certificate files, digital entitlements, license renewal notices
@@ -96,7 +98,7 @@ OWNER'S EMAIL ACCOUNTS: {account_emails}
 - Spam: Unsolicited junk, scams, phishing, lottery winners, Nigerian princes
 - Social Notification: Social media alerts (LinkedIn, Facebook, Instagram, Twitter likes/follows/comments), forum notifications, community digests
 - Automated Alert: Non-critical automated system notifications, CI/CD build alerts, monitoring noise, usage stats from free-tier services, "welcome to X" onboarding drip campaigns
-- Political: Campaign emails, fundraising solicitations, political action committees, candidate endorsements, political petitions
+- Political Junk: Mass campaign fundraising blasts, PAC solicitations, "will you chip in $5?" emails, bulk political petitions, campaign auto-mailers with unsubscribe links, candidate endorsement spam. Telltale signs: sent via bulk email platforms (e.g. ActionKit, NGP VAN, Mailchimp), generic "Dear supporter" tone, urgency-driven donation asks, large unsubscribe footers
 
 ## CRITICAL RULES:
 1. BUSINESS ENTITY FIRST: If an email clearly relates to one of the 5 business entities, use that entity category — even if it also fits a general category
@@ -113,7 +115,15 @@ OWNER'S EMAIL ACCOUNTS: {account_emails}
 12. PayPal/Venmo payment receipts → categorize by WHAT was paid for (Canva = "Fees and Bills", band gear = "Terra Cognita", etc.)
 13. Legal agreement changes from services you use (PayPal TOS, etc.) → "Legal"
 14. Found banking weekly reviews for Terra Cognita → "Finance" (NOT Newsletter — it's a real bank statement)
-15. When in doubt between keep and junk, ALWAYS lean toward KEEP
+15. POLITICAL EMAILS — distinguish carefully:
+    - Personal/direct correspondence from a politician or their office → "Politics" (KEEP)
+    - Official government/election notices → "Government" (KEEP)
+    - Town halls, constituent updates from YOUR representatives → "Politics" (KEEP)
+    - Mass fundraising blasts ("chip in $5", "match my donation", "deadline midnight") → "Political Junk" (ARCHIVE)
+    - Campaign auto-mailers with bulk unsubscribe links, sent via email platforms → "Political Junk" (ARCHIVE)
+    - If it reads like a personal reply or direct constituent communication → KEEP as "Politics"
+    - If it reads like it was sent to 100,000 people → "Political Junk"
+16. When in doubt between keep and junk, ALWAYS lean toward KEEP
 
 Today's date: {today}
 
