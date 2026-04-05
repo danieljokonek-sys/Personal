@@ -43,18 +43,11 @@ KEEP_CATEGORIES = [
     "Shipping and Delivery",
     "Account Security",
     "Logins and Verification",
-    "Important",
 ]
 
-# Junk categories — archived or trashed
+# Junk — auto-deleted, no label created
 JUNK_CATEGORIES = [
-    "Marketing",
-    "Newsletter",
-    "Promotional",
-    "Spam",
-    "Social Notification",
-    "Automated Alert",
-    "Political Junk",
+    "Junk",
 ]
 
 ALL_CATEGORIES = BUSINESS_CATEGORIES + KEEP_CATEGORIES + JUNK_CATEGORIES
@@ -87,15 +80,6 @@ LABEL_COLORS = {
     "Shipping and Delivery":    {"textColor": "#ffffff", "backgroundColor": "#ebdbde"},  # blush
     "Account Security":         {"textColor": "#ffffff", "backgroundColor": "#cc3a21"},  # dark red
     "Logins and Verification":  {"textColor": "#ffffff", "backgroundColor": "#e66550"},  # coral
-    "Important":                {"textColor": "#ffffff", "backgroundColor": "#ffad47"},  # gold
-    # Junk categories — muted/gray tones
-    "Marketing":                {"textColor": "#666666", "backgroundColor": "#efefef"},  # light gray
-    "Newsletter":               {"textColor": "#666666", "backgroundColor": "#e3d7ff"},  # pale purple
-    "Promotional":              {"textColor": "#666666", "backgroundColor": "#fce8b3"},  # pale yellow
-    "Spam":                     {"textColor": "#ffffff", "backgroundColor": "#822111"},  # dark maroon
-    "Social Notification":      {"textColor": "#666666", "backgroundColor": "#d0bcff"},  # pale violet
-    "Automated Alert":          {"textColor": "#666666", "backgroundColor": "#c6f3de"},  # pale green
-    "Political Junk":           {"textColor": "#666666", "backgroundColor": "#d5a6bd"},  # mauve
 }
 
 CLASSIFICATION_SYSTEM_PROMPT = """You are an email triage assistant. Your job is to classify emails into categories so the user's inbox stays clean and organized.
@@ -128,16 +112,11 @@ OWNER'S EMAIL ACCOUNTS: {account_emails}
 - Shipping and Delivery: Package tracking, delivery notifications, shipping confirmations, carrier updates (UPS, FedEx, USPS, Amazon delivery)
 - Account Security: Password resets, two-factor authentication codes, security alerts, breach notifications, recovery codes, backup codes
 - Logins and Verification: Email verification, account verification, new device sign-ins, login confirmations, identity verification, "confirm your email" messages
-- Important: Anything clearly important that doesn't fit the above categories
 
-## JUNK categories (archive or trash):
-- Marketing: Sales pitches, promotional offers, discount codes, "limited time" offers, upsell emails, "we miss you" re-engagement
-- Newsletter: Email newsletters, weekly digests, blog updates, content roundups, industry news, "your week in review" from non-financial services
-- Promotional: Deals, coupons, store announcements, product launches, Black Friday, seasonal sales
-- Spam: Unsolicited junk, scams, phishing, lottery winners, Nigerian princes
-- Social Notification: Social media alerts (LinkedIn, Facebook, Instagram, Twitter likes/follows/comments), forum notifications, community digests
-- Automated Alert: Non-critical automated system notifications, CI/CD build alerts, monitoring noise, usage stats from free-tier services, "welcome to X" onboarding drip campaigns
-- Political Junk: Mass campaign fundraising blasts, PAC solicitations, "will you chip in $5?" emails, bulk political petitions, campaign auto-mailers with unsubscribe links, candidate endorsement spam. Telltale signs: sent via bulk email platforms (e.g. ActionKit, NGP VAN, Mailchimp), generic "Dear supporter" tone, urgency-driven donation asks, large unsubscribe footers
+## JUNK category (auto-deleted, no label):
+- Junk: ALL of the following get auto-deleted with NO label — marketing emails, sales pitches, promotional offers, discount codes, newsletters, blog digests, content roundups, coupons, store announcements, spam, scams, phishing, social media notifications (LinkedIn, Facebook, Instagram likes/follows/comments), forum digests, non-critical automated alerts (CI/CD, monitoring, onboarding drip campaigns, "welcome to X"), mass campaign fundraising blasts, PAC solicitations, political auto-mailers ("chip in $5", bulk unsubscribe footers), Glassdoor job alerts, and any other bulk/auto-generated email with no personal or business value
+
+## IMPORTANT: There is NO "Important" catch-all category. Every email MUST be classified into one of the specific categories above. If an email is genuinely important but doesn't fit any category, pick the CLOSEST match (e.g., a miscellaneous business email → the relevant business entity or "Personal").
 
 ## CRITICAL RULES:
 1. BUSINESS ENTITY FIRST: If an email clearly relates to one of the 5 business entities, use that entity category — even if it also fits a general category
@@ -170,13 +149,13 @@ Respond with valid JSON only."""
 
 CLASSIFICATION_USER_PROMPT = """Classify each email below. For each, provide:
 - category: one of {categories}
-- action: "label" (apply category label, keep accessible), "archive" (label + remove from inbox), or "trash" (delete)
+- action: "label" (keep in inbox with category label) or "archive" (label + remove from inbox). Emails classified as "Junk" are auto-deleted regardless of action.
 - confidence: "high", "medium", or "low"
 
 Guidelines for action:
-- "label": Important emails the user should see or reference — business, financial, security, travel, licenses, personal
-- "archive": Emails worth keeping for records but not needing inbox attention — OR junk with opt-out value
-- "trash": Clear spam, phishing, or truly worthless junk with zero reference value
+- "label": Emails the user should see or may need to act on — business, financial, security, travel, licenses, personal
+- "archive": Emails worth keeping for records but not needing inbox attention (old receipts, past notifications, etc.)
+- Any email categorized as "Junk" will be auto-deleted — no label, straight to trash
 
 EMAILS:
 {emails_json}
@@ -267,35 +246,41 @@ class EmailOrganizer:
             action = result.get("action", "label")
             confidence = result.get("confidence", "medium")
 
+            # Junk → auto-delete, no label
+            is_junk = category in JUNK_CATEGORIES
+
             # Safety: never trash with low confidence
-            if action == "trash" and confidence == "low":
-                action = "archive"
+            if is_junk and confidence == "low":
+                action = "archive"  # demote to archive instead of delete
 
             if dry_run:
                 subj = email_map.get(email_id, {}).get("subject", "?")
-                log.info(f"[DRY RUN] {email_id}: {category} → {action} ({confidence}) — {subj}")
-                stats["labeled"] += 1
+                fate = "DELETE" if is_junk else action
+                log.info(f"[DRY RUN] {email_id}: {category} → {fate} ({confidence}) — {subj}")
+                stats["trashed" if is_junk else "labeled"] += 1
                 continue
 
             try:
-                label_name = self._label_name_for_category(category)
-                color = LABEL_COLORS.get(category)
-                label_id = gmail_client.get_or_create_label(label_name, color=color)
-
-                if action == "trash":
-                    gmail_client.apply_label(email_id, label_id)
+                if is_junk:
+                    # Trash directly — no label
                     gmail_client.trash_email(email_id)
                     stats["trashed"] += 1
-                elif action == "archive":
-                    gmail_client.apply_labels_and_actions(
-                        email_id,
-                        add_label_ids=[label_id],
-                        remove_label_ids=["INBOX"],
-                    )
-                    stats["archived"] += 1
-                else:  # "label"
-                    gmail_client.apply_label(email_id, label_id)
-                    stats["labeled"] += 1
+                else:
+                    # Apply colored category label
+                    label_name = self._label_name_for_category(category)
+                    color = LABEL_COLORS.get(category)
+                    label_id = gmail_client.get_or_create_label(label_name, color=color)
+
+                    if action == "archive":
+                        gmail_client.apply_labels_and_actions(
+                            email_id,
+                            add_label_ids=[label_id],
+                            remove_label_ids=["INBOX"],
+                        )
+                        stats["archived"] += 1
+                    else:  # "label"
+                        gmail_client.apply_label(email_id, label_id)
+                        stats["labeled"] += 1
 
             except Exception as e:
                 log.warning(f"Failed to process {email_id}: {e}")
