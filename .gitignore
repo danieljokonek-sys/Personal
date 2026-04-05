@@ -1,10 +1,10 @@
 # Secrets
 .env
-credentials/token.json
-credentials/credentials.json
+**/credentials/token*.json
+**/credentials/credentials.json
 
 # Data
-data/
+**/data/
 
 # Python
 __pycache__/
