@@ -1245,7 +1245,9 @@ def organize_inbox(dry_run, max_emails, account):
 @click.option("--all-mail", is_flag=True, help="Process ALL mail (not just inbox) for comprehensive cleanup")
 @click.option("--model", default=None, help="Override model (e.g. claude-haiku-4-5-20251001 for cheaper runs)")
 @click.option("--delete-older-than", default=None, type=int, help="Delete non-vital emails older than N months (vital = contracts, keys, licenses, business, tax, etc.)")
-def organize_history(dry_run, batch_size, max_pages, account, all_mail, model, delete_older_than):
+@click.option("--after", default=None, help="Only process emails after this date (YYYY/MM/DD)")
+@click.option("--before", default=None, help="Only process emails before this date (YYYY/MM/DD)")
+def organize_history(dry_run, batch_size, max_pages, account, all_mail, model, delete_older_than, after, before):
     """Deep-clean historical email — pages through inbox or all mail."""
     config = get_config()
     init_db()
@@ -1255,11 +1257,23 @@ def organize_history(dry_run, batch_size, max_pages, account, all_mail, model, d
         console.print(f"\n[bold yellow]Retention policy: delete non-vital emails older than {delete_older_than} months[/bold yellow]")
         console.print(f"[green]Protected categories (never deleted):[/green] {', '.join(sorted(VITAL_CATEGORIES))}")
         console.print()
+
+    # Build Gmail date query
+    date_query = ""
+    if after:
+        date_query += f"after:{after} "
+    if before:
+        date_query += f"before:{before} "
+    date_query = date_query.strip()
+    if date_query:
+        console.print(f"[bold]Date filter:[/bold] {date_query}\n")
+
     _do_organize_history(
         config, dry_run=dry_run, batch_size=batch_size,
         max_pages=max_pages, account_filter=account,
         all_mail=all_mail, model_override=model,
         delete_older_than_days=delete_days,
+        extra_query=date_query,
     )
 
 
@@ -1360,7 +1374,7 @@ def _do_organize(config, dry_run=False, max_emails=100, account_filter=None):
 def _do_organize_history(
     config, dry_run=False, batch_size=50, max_pages=20,
     account_filter=None, all_mail=False, model_override=None,
-    delete_older_than_days=None,
+    delete_older_than_days=None, extra_query="",
 ):
     """Page through email history and organize everything.
 
@@ -1394,11 +1408,13 @@ def _do_organize_history(
             console.print(f"  Page {page + 1}: fetching up to {batch_size} emails...")
             if all_mail:
                 emails, next_token = client.fetch_all_emails_paged(
-                    max_results=batch_size, page_token=page_token
+                    max_results=batch_size, page_token=page_token,
+                    extra_query=extra_query,
                 )
             else:
                 emails, next_token = client.fetch_inbox_emails(
-                    max_results=batch_size, page_token=page_token
+                    max_results=batch_size, page_token=page_token,
+                    extra_query=extra_query,
                 )
 
             if not emails:
