@@ -22,6 +22,7 @@ BUSINESS_CATEGORIES = [
     "Well Made Plays",
     "The Chorus Crafters",
     "4400 Mount Vernon Drive",
+    "2300 Southern Oaks",
 ]
 
 # General keep categories
@@ -61,6 +62,7 @@ LABEL_COLORS = {
     "Well Made Plays":          {"textColor": "#ffffff", "backgroundColor": "#4a86e8"},  # blue
     "The Chorus Crafters":      {"textColor": "#ffffff", "backgroundColor": "#ffad47"},  # orange
     "4400 Mount Vernon Drive":  {"textColor": "#ffffff", "backgroundColor": "#a479e2"},  # purple
+    "2300 Southern Oaks":       {"textColor": "#ffffff", "backgroundColor": "#8e63ce"},  # dark purple
     # Keep categories
     "Personal":                 {"textColor": "#ffffff", "backgroundColor": "#3dc789"},  # teal green
     "Tax":                      {"textColor": "#ffffff", "backgroundColor": "#b65775"},  # rose
@@ -91,7 +93,8 @@ OWNER'S EMAIL ACCOUNTS: {account_emails}
 - Terra Cognita: Everything related to Daniel's band Terra Cognita — gigs, shows, rehearsals, band member communications, booking inquiries, setlists, merch, social media for the band. Email account: terracognitamusic@gmail.com
 - Well Made Plays: Music management and events company co-run with Douglas Schmidt (Doug Schmidt). Bookings, venue deals, artist management, event logistics, revenue splits, contracts
 - The Chorus Crafters: Custom song company — commissions, client orders, song delivery, revisions, demos, deposits, payments for personalized songs (weddings, memorials, birthdays). Co-run with Dan Hochman. Email account: thechoruscrafters@gmail.com
-- 4400 Mount Vernon Drive: Rental property — tenants, rent, leases, maintenance, repairs, property tax, HOA, contractors, property management
+- 4400 Mount Vernon Drive: Rental property (LLC) — tenants, rent, leases, maintenance, repairs, property tax, HOA, contractors, property management
+- 2300 Southern Oaks: Daniel's primary residence (personal home, NOT a business/LLC) — pool service, pool maintenance, construction contractors, home renovation, home utilities (electric, water, gas, internet), home insurance, home warranty, landscaping, pest control, HVAC, plumbing, general home repair
 
 ## KEEP categories (important — label and keep):
 - Personal: Friends, family, personal correspondence, personal plans
