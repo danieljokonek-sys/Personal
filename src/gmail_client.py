@@ -204,9 +204,16 @@ class GmailClient:
         }
         if color:
             body["color"] = color
-        new_label = self.service.users().labels().create(
-            userId="me", body=body,
-        ).execute()
+        try:
+            new_label = self.service.users().labels().create(
+                userId="me", body=body,
+            ).execute()
+        except Exception:
+            # Color might be invalid — retry without color
+            body.pop("color", None)
+            new_label = self.service.users().labels().create(
+                userId="me", body=body,
+            ).execute()
         self._label_cache[name] = new_label["id"]
         return new_label["id"]
 
