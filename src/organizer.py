@@ -52,34 +52,33 @@ JUNK_CATEGORIES = [
 
 ALL_CATEGORIES = BUSINESS_CATEGORIES + KEEP_CATEGORIES + JUNK_CATEGORIES
 
-# Gmail label colors — each category gets a unique color.
-# Gmail only allows specific hex pairs; these are from the official palette.
-# Format: {"textColor": "#hex", "backgroundColor": "#hex"}
+# Gmail label colors — must use ONLY hex values from Gmail's allowed palette.
+# See: https://developers.google.com/gmail/api/reference/rest/v1/users.labels
 LABEL_COLORS = {
     # Business entities — bold, distinct colors
     "Audio Services":           {"textColor": "#ffffff", "backgroundColor": "#fb4c2f"},  # red
     "Terra Cognita":            {"textColor": "#ffffff", "backgroundColor": "#16a765"},  # green
     "Well Made Plays":          {"textColor": "#ffffff", "backgroundColor": "#4a86e8"},  # blue
-    "The Chorus Crafters":      {"textColor": "#ffffff", "backgroundColor": "#ff7537"},  # orange
+    "The Chorus Crafters":      {"textColor": "#ffffff", "backgroundColor": "#ffad47"},  # orange
     "4400 Mount Vernon Drive":  {"textColor": "#ffffff", "backgroundColor": "#a479e2"},  # purple
     # Keep categories
-    "Personal":                 {"textColor": "#ffffff", "backgroundColor": "#2da2bb"},  # teal
+    "Personal":                 {"textColor": "#ffffff", "backgroundColor": "#3dc789"},  # teal green
     "Tax":                      {"textColor": "#ffffff", "backgroundColor": "#b65775"},  # rose
     "Fees and Bills":           {"textColor": "#ffffff", "backgroundColor": "#e07798"},  # pink
     "Government":               {"textColor": "#ffffff", "backgroundColor": "#3c78d8"},  # dark blue
     "Politics":                 {"textColor": "#ffffff", "backgroundColor": "#285bac"},  # navy
-    "Product Purchases":        {"textColor": "#ffffff", "backgroundColor": "#f2b2a8"},  # salmon
+    "Product Purchases":        {"textColor": "#ffffff", "backgroundColor": "#eba093"},  # salmon
     "Product Downloads":        {"textColor": "#ffffff", "backgroundColor": "#c9daf8"},  # light blue
     "Licenses and Keys":        {"textColor": "#ffffff", "backgroundColor": "#a46a21"},  # brown
-    "Finance":                  {"textColor": "#ffffff", "backgroundColor": "#41d692"},  # mint
-    "Health and Insurance":     {"textColor": "#ffffff", "backgroundColor": "#b3efd3"},  # light green
-    "Travel":                   {"textColor": "#ffffff", "backgroundColor": "#ffc8af"},  # peach
+    "Finance":                  {"textColor": "#ffffff", "backgroundColor": "#43d692"},  # mint
+    "Health and Insurance":     {"textColor": "#ffffff", "backgroundColor": "#b9e4d0"},  # light green
+    "Travel":                   {"textColor": "#ffffff", "backgroundColor": "#ffd6a2"},  # peach
     "Legal":                    {"textColor": "#ffffff", "backgroundColor": "#6d9eeb"},  # periwinkle
     "Education":                {"textColor": "#ffffff", "backgroundColor": "#b694e8"},  # lavender
-    "Employment":               {"textColor": "#ffffff", "backgroundColor": "#98d7e4"},  # sky
-    "Shipping and Delivery":    {"textColor": "#ffffff", "backgroundColor": "#ebdbde"},  # blush
+    "Employment":               {"textColor": "#ffffff", "backgroundColor": "#a4c2f4"},  # sky blue
+    "Shipping and Delivery":    {"textColor": "#ffffff", "backgroundColor": "#fbc8d9"},  # blush
     "Account Security":         {"textColor": "#ffffff", "backgroundColor": "#cc3a21"},  # dark red
-    "Logins and Verification":  {"textColor": "#ffffff", "backgroundColor": "#e66550"},  # coral
+    "Logins and Verification":  {"textColor": "#ffffff", "backgroundColor": "#ac2b16"},  # deep red
 }
 
 CLASSIFICATION_SYSTEM_PROMPT = """You are an email triage assistant. Your job is to classify emails into categories so the user's inbox stays clean and organized.
