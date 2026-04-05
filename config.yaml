@@ -124,6 +124,15 @@ analysis:
   model: "claude-opus-4-6"
   batch_size: 20
 
+# Email Organizer — auto-categorize, label, and archive/trash junk
+organizer:
+  model: "claude-sonnet-4-6"     # faster/cheaper model for classification
+  batch_size: 25                  # emails per Claude API call
+  # Actions for junk categories (override defaults)
+  junk_action: "archive"          # "archive" or "trash" — what to do with marketing/spam
+  # Safety: never trash emails with low-confidence classification
+  safe_mode: true
+
 # Feature flags
 features:
   auto_label_emails: true       # apply Gmail labels by business entity after analysis

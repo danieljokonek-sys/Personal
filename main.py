@@ -79,8 +79,13 @@ from src.database import (
     unsnooze_item,
     get_snoozed_items,
     SNOOZEABLE_TABLES,
+    # organizer
+    is_email_organized,
+    store_organized_email,
+    get_organized_summary,
 )
 from src.gmail_client import GmailClient, build_clients, get_send_client
+from src.organizer import EmailOrganizer
 from src.calendar_client import CalendarClient
 from src.analyzer import Analyzer
 from src.digest import DigestGenerator
@@ -498,7 +503,7 @@ def digest(digest_type):
 
 @cli.command()
 def run():
-    """Fetch emails + calendar, analyze, and send digest in one shot."""
+    """Fetch emails + calendar, analyze, organize, and send digest in one shot."""
     config = get_config()
     init_db()
     console.print("[bold]Fetching emails from all accounts...[/bold]")
@@ -509,6 +514,8 @@ def run():
     do_analyze(config)
     console.print("[bold]Applying Gmail labels...[/bold]")
     do_apply_labels(config)
+    console.print("[bold]Organizing inbox...[/bold]")
+    _do_organize(config)
     console.print("[bold]Detecting follow-ups needed...[/bold]")
     do_detect_follow_ups(config)
     console.print("[bold]Sending digest...[/bold]")
@@ -615,6 +622,7 @@ def schedule_cmd():
         do_fetch(config)
         do_fetch_calendar(config)
         do_apply_labels(config)
+        _do_organize(config)
         do_detect_follow_ups(config)
 
     scheduler = TrackerScheduler(
@@ -1205,6 +1213,218 @@ def snooze_list():
         )
     console.print(table)
     console.print("\n[dim]Use 'snooze wake <table> <id>' to wake an item early.[/dim]")
+
+
+# ── Email Organizer ─────────────────────────────────────────────────────────
+
+@cli.group()
+def organize():
+    """Email organizer — auto-label, archive junk, and keep inbox clean."""
+    pass
+
+
+@organize.command(name="inbox")
+@click.option("--dry-run", is_flag=True, help="Classify only — don't modify Gmail")
+@click.option("--limit", "max_emails", default=100, help="Max emails to process")
+@click.option("--account", default=None, help="Process only this account email")
+def organize_inbox(dry_run, max_emails, account):
+    """Organize current inbox emails — classify, label, and archive junk."""
+    config = get_config()
+    init_db()
+    _do_organize(config, dry_run=dry_run, max_emails=max_emails, account_filter=account)
+
+
+@organize.command(name="history")
+@click.option("--dry-run", is_flag=True, help="Classify only — don't modify Gmail")
+@click.option("--batch-size", default=50, help="Emails per page")
+@click.option("--max-pages", default=20, help="Max pages to process (0 = unlimited)")
+@click.option("--account", default=None, help="Process only this account email")
+def organize_history(dry_run, batch_size, max_pages, account):
+    """Deep-clean historical inbox — pages through all inbox emails."""
+    config = get_config()
+    init_db()
+    _do_organize_history(
+        config, dry_run=dry_run, batch_size=batch_size,
+        max_pages=max_pages, account_filter=account,
+    )
+
+
+@organize.command(name="stats")
+def organize_stats():
+    """Show organizer statistics — how many emails sorted by category."""
+    init_db()
+    summary = get_organized_summary()
+
+    if summary["total"] == 0:
+        console.print("No emails organized yet. Run [bold]python main.py organize inbox[/bold] to start.")
+        return
+
+    table = Table(title=f"Email Organizer Stats — {summary['total']} emails processed")
+    table.add_column("Category", style="bold")
+    table.add_column("Count", justify="right")
+    for cat, cnt in sorted(summary["by_category"].items(), key=lambda x: -x[1]):
+        table.add_row(cat, str(cnt))
+
+    table.add_section()
+    table.add_row("[bold]By Action[/bold]", "")
+    for action, cnt in sorted(summary["by_action"].items(), key=lambda x: -x[1]):
+        style = {"label": "green", "archive": "yellow", "trash": "red"}.get(action, "")
+        table.add_row(f"  [{style}]{action}[/{style}]", str(cnt))
+
+    console.print(table)
+
+
+def _build_organizer(config) -> EmailOrganizer:
+    owner_name = config.get("owner", {}).get("name", "User")
+    account_emails = [a["email"] for a in config.get("accounts", [])]
+    model = config.get("organizer", {}).get("model", "claude-sonnet-4-6")
+    batch_size = config.get("organizer", {}).get("batch_size", 25)
+    return EmailOrganizer(
+        owner_name=owner_name,
+        account_emails=account_emails,
+        model=model,
+        batch_size=batch_size,
+    )
+
+
+def _do_organize(config, dry_run=False, max_emails=100, account_filter=None):
+    """Organize current inbox for all (or one) account(s)."""
+    organizer = _build_organizer(config)
+    clients = build_clients(config)
+
+    for client in clients:
+        if account_filter and client.account_email != account_filter:
+            continue
+        console.print(f"\n[bold]Organizing {client.account_email}...[/bold]")
+        try:
+            client.authenticate()
+        except Exception as e:
+            log.error(f"Auth failed for {client.account_email}: {e}")
+            continue
+
+        emails, _ = client.fetch_inbox_emails(max_results=max_emails)
+        # Filter out already-organized emails
+        new_emails = [e for e in emails if not is_email_organized(e["id"])]
+
+        if not new_emails:
+            console.print("  No new emails to organize.")
+            continue
+
+        console.print(f"  {len(new_emails)} email(s) to classify (of {len(emails)} in inbox)...")
+
+        # Process in batches
+        total_stats = {"labeled": 0, "archived": 0, "trashed": 0, "skipped": 0, "errors": 0}
+        for i in range(0, len(new_emails), organizer.batch_size):
+            batch = new_emails[i : i + organizer.batch_size]
+            console.print(f"  Batch {i // organizer.batch_size + 1} ({len(batch)} emails)...")
+
+            stats, classifications = organizer.classify_and_act(batch, client, dry_run=dry_run)
+
+            for key in total_stats:
+                total_stats[key] += stats[key]
+
+            # Record in database
+            if not dry_run:
+                for email_id, result in classifications.items():
+                    store_organized_email(
+                        email_id=email_id,
+                        account_email=client.account_email,
+                        category=result.get("category", "Important"),
+                        action=result.get("action", "label"),
+                        confidence=result.get("confidence", "medium"),
+                        reason=result.get("reason", ""),
+                    )
+
+        prefix = "[DRY RUN] " if dry_run else ""
+        console.print(
+            f"  [green]{prefix}Done: {total_stats['labeled']} labeled, "
+            f"{total_stats['archived']} archived, {total_stats['trashed']} trashed, "
+            f"{total_stats['errors']} errors[/green]"
+        )
+
+
+def _do_organize_history(config, dry_run=False, batch_size=50, max_pages=20, account_filter=None):
+    """Page through the entire inbox history and organize everything."""
+    organizer = _build_organizer(config)
+    clients = build_clients(config)
+
+    for client in clients:
+        if account_filter and client.account_email != account_filter:
+            continue
+        console.print(f"\n[bold]Deep-cleaning {client.account_email}...[/bold]")
+        try:
+            client.authenticate()
+        except Exception as e:
+            log.error(f"Auth failed for {client.account_email}: {e}")
+            continue
+
+        page = 0
+        page_token = None
+        total_stats = {"labeled": 0, "archived": 0, "trashed": 0, "skipped": 0, "errors": 0}
+        total_processed = 0
+
+        while True:
+            if max_pages > 0 and page >= max_pages:
+                console.print(f"  Reached max pages ({max_pages}). Use --max-pages 0 for unlimited.")
+                break
+
+            console.print(f"  Page {page + 1}: fetching up to {batch_size} emails...")
+            emails, next_token = client.fetch_inbox_emails(
+                max_results=batch_size, page_token=page_token
+            )
+
+            if not emails:
+                console.print("  No more emails.")
+                break
+
+            # Filter already-organized
+            new_emails = [e for e in emails if not is_email_organized(e["id"])]
+            if not new_emails:
+                console.print(f"  All {len(emails)} emails already organized, skipping...")
+                if next_token:
+                    page_token = next_token
+                    page += 1
+                    continue
+                else:
+                    break
+
+            console.print(f"  Classifying {len(new_emails)} new emails...")
+            stats, classifications = organizer.classify_and_act(new_emails, client, dry_run=dry_run)
+
+            for key in total_stats:
+                total_stats[key] += stats[key]
+            total_processed += len(new_emails)
+
+            if not dry_run:
+                for email_id, result in classifications.items():
+                    store_organized_email(
+                        email_id=email_id,
+                        account_email=client.account_email,
+                        category=result.get("category", "Important"),
+                        action=result.get("action", "label"),
+                        confidence=result.get("confidence", "medium"),
+                        reason=result.get("reason", ""),
+                    )
+
+            console.print(
+                f"  Page {page + 1}: +{stats['labeled']} labeled, "
+                f"+{stats['archived']} archived, +{stats['trashed']} trashed"
+            )
+
+            if not next_token:
+                break
+            page_token = next_token
+            page += 1
+
+        prefix = "[DRY RUN] " if dry_run else ""
+        console.print(
+            f"\n  [green]{prefix}History cleanup complete for {client.account_email}:[/green]"
+        )
+        console.print(
+            f"  Processed {total_processed} emails: "
+            f"{total_stats['labeled']} labeled, {total_stats['archived']} archived, "
+            f"{total_stats['trashed']} trashed, {total_stats['errors']} errors"
+        )
 
 
 if __name__ == "__main__":

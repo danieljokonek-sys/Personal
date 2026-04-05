@@ -203,6 +203,77 @@ class GmailClient:
             body={"addLabelIds": [label_id]},
         ).execute()
 
+    def apply_labels_and_actions(
+        self,
+        message_id: str,
+        add_label_ids: list[str] | None = None,
+        remove_label_ids: list[str] | None = None,
+    ):
+        """Modify labels on a message — used for labeling, archiving, etc.
+
+        Archiving = remove 'INBOX' label.
+        """
+        if not self.service:
+            self.authenticate()
+        body: dict = {}
+        if add_label_ids:
+            body["addLabelIds"] = add_label_ids
+        if remove_label_ids:
+            body["removeLabelIds"] = remove_label_ids
+        if body:
+            self.service.users().messages().modify(
+                userId="me", id=message_id, body=body
+            ).execute()
+
+    def archive_email(self, message_id: str):
+        """Archive a message (remove from INBOX)."""
+        self.apply_labels_and_actions(message_id, remove_label_ids=["INBOX"])
+
+    def trash_email(self, message_id: str):
+        """Move a message to trash."""
+        if not self.service:
+            self.authenticate()
+        self.service.users().messages().trash(userId="me", id=message_id).execute()
+
+    def fetch_inbox_emails(
+        self,
+        max_results: int = 100,
+        page_token: str | None = None,
+        extra_query: str = "",
+    ) -> tuple[list[dict], str | None]:
+        """Fetch emails from the INBOX, returning (emails, next_page_token).
+
+        Used by the organizer to page through the full inbox.
+        """
+        if not self.service:
+            self.authenticate()
+
+        q = "in:inbox"
+        if extra_query:
+            q += f" {extra_query}"
+
+        kwargs: dict = {"userId": "me", "maxResults": max_results, "q": q}
+        if page_token:
+            kwargs["pageToken"] = page_token
+
+        results = self.service.users().messages().list(**kwargs).execute()
+        message_ids = results.get("messages", [])
+        next_token = results.get("nextPageToken")
+
+        emails = []
+        for msg_ref in message_ids:
+            msg = (
+                self.service.users()
+                .messages()
+                .get(userId="me", id=msg_ref["id"], format="full")
+                .execute()
+            )
+            parsed = self._parse_message(msg)
+            if parsed:
+                emails.append(parsed)
+
+        return emails, next_token
+
     def _parse_message_metadata(self, msg: dict) -> dict | None:
         headers = {
             h["name"].lower(): h["value"]

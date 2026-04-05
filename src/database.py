@@ -202,6 +202,15 @@ def _migrate(conn: sqlite3.Connection):
             created_at TEXT DEFAULT CURRENT_TIMESTAMP,
             updated_at TEXT DEFAULT CURRENT_TIMESTAMP
         );
+        CREATE TABLE IF NOT EXISTS organized_emails (
+            email_id TEXT PRIMARY KEY,
+            account_email TEXT,
+            category TEXT NOT NULL,
+            action TEXT NOT NULL,
+            confidence TEXT DEFAULT 'medium',
+            reason TEXT,
+            organized_at TEXT DEFAULT CURRENT_TIMESTAMP
+        );
     """)
     # Indexes on new tables/columns (safe now that tables and columns exist)
     conn.executescript("""
@@ -213,6 +222,8 @@ def _migrate(conn: sqlite3.Connection):
         CREATE INDEX IF NOT EXISTS idx_tasks_status ON tasks(status);
         CREATE INDEX IF NOT EXISTS idx_tasks_due ON tasks(due_date);
         CREATE INDEX IF NOT EXISTS idx_followup_status ON follow_ups(status);
+        CREATE INDEX IF NOT EXISTS idx_organized_category ON organized_emails(category);
+        CREATE INDEX IF NOT EXISTS idx_organized_action ON organized_emails(action);
     """)
     conn.commit()
 
@@ -991,3 +1002,50 @@ def get_snoozed_items() -> list[dict]:
             pass
     conn.close()
     return results
+
+
+# ── Email Organizer ─────────────────────────────────────────────────────────
+
+def is_email_organized(email_id: str) -> bool:
+    conn = get_connection()
+    row = conn.execute(
+        "SELECT 1 FROM organized_emails WHERE email_id = ?", (email_id,)
+    ).fetchone()
+    conn.close()
+    return row is not None
+
+
+def store_organized_email(
+    email_id: str,
+    account_email: str,
+    category: str,
+    action: str,
+    confidence: str = "medium",
+    reason: str = "",
+):
+    conn = get_connection()
+    conn.execute(
+        """INSERT OR REPLACE INTO organized_emails
+           (email_id, account_email, category, action, confidence, reason)
+           VALUES (?, ?, ?, ?, ?, ?)""",
+        (email_id, account_email, category, action, confidence, reason),
+    )
+    conn.commit()
+    conn.close()
+
+
+def get_organized_summary() -> dict:
+    conn = get_connection()
+    total = conn.execute("SELECT COUNT(*) FROM organized_emails").fetchone()[0]
+    by_category = conn.execute(
+        "SELECT category, COUNT(*) as cnt FROM organized_emails GROUP BY category ORDER BY cnt DESC"
+    ).fetchall()
+    by_action = conn.execute(
+        "SELECT action, COUNT(*) as cnt FROM organized_emails GROUP BY action ORDER BY cnt DESC"
+    ).fetchall()
+    conn.close()
+    return {
+        "total": total,
+        "by_category": {row["category"]: row["cnt"] for row in by_category},
+        "by_action": {row["action"]: row["cnt"] for row in by_action},
+    }
