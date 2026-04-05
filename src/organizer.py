@@ -268,18 +268,14 @@ class EmailOrganizer:
 
     @staticmethod
     def _label_name_for_category(category: str) -> str:
-        """Map a category to a Gmail label path.
+        """Map a category to a Gmail label.
 
-        Business entities get top-level labels.
-        General keep categories go under Organized/.
-        Junk categories go under Organized/Junk/.
+        Every category gets a single top-level label — no nesting.
+        Business entities: "Terra Cognita", "The Chorus Crafters", etc.
+        General categories: "Tax", "Travel", "Finance", etc.
+        Junk categories: "Marketing", "Spam", "Political Junk", etc.
         """
-        if category in BUSINESS_CATEGORIES:
-            return category  # top-level: "Terra Cognita", "The Chorus Crafters", etc.
-        elif category in JUNK_CATEGORIES:
-            return f"Organized/Junk/{category}"
-        else:
-            return f"Organized/{category}"
+        return category
 
     def _parse_json(self, text: str) -> dict:
         text = text.strip()

@@ -306,7 +306,7 @@ def do_apply_labels(config):
         return
     entities = load_entities(config)
     entity_label_map = {
-        key: f"Tracker/{entity.name}"
+        key: entity.name
         for key, entity in entities.items()
     }
     unlabeled = get_unlabeled_emails(limit=200)
