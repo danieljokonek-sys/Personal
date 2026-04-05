@@ -15,35 +15,40 @@ log = logging.getLogger("organizer")
 
 # ── Categories ──────────────────────────────────────────────────────────────
 
-# Business entity labels — each gets its own top-level Gmail label
-BUSINESS_CATEGORIES = [
+# All keep categories — the classifier outputs these names,
+# then _label_name_for_category() maps them to nested Gmail labels.
+KEEP_CATEGORIES = [
+    # Business
     "Audio Services",
     "Terra Cognita",
     "Well Made Plays",
     "The Chorus Crafters",
+    # Property
     "4400 Mount Vernon Drive",
     "2300 Southern Oaks",
-]
-
-# General keep categories
-KEEP_CATEGORIES = [
-    "Personal",
+    # Finance
     "Tax",
     "Fees and Bills",
+    "Banking and Investments",
+    # Legal & Government
+    "Legal",
     "Government",
     "Politics",
+    # Shopping
     "Product Purchases",
     "Product Downloads",
     "Licenses and Keys",
-    "Finance",
-    "Health and Insurance",
-    "Travel",
-    "Legal",
-    "Education",
-    "Employment",
     "Shipping and Delivery",
+    # Security
     "Account Security",
     "Logins and Verification",
+    # Health & Travel
+    "Health and Insurance",
+    "Travel",
+    # Personal
+    "Personal",
+    "Education",
+    "Employment",
 ]
 
 # Junk — auto-deleted, no label created
@@ -51,36 +56,76 @@ JUNK_CATEGORIES = [
     "Junk",
 ]
 
-ALL_CATEGORIES = BUSINESS_CATEGORIES + KEEP_CATEGORIES + JUNK_CATEGORIES
+ALL_CATEGORIES = KEEP_CATEGORIES + JUNK_CATEGORIES
+
+# Category → nested Gmail label path
+LABEL_PATH_MAP = {
+    # Business/
+    "Audio Services":           "Business/Audio Services",
+    "Terra Cognita":            "Business/Terra Cognita",
+    "Well Made Plays":          "Business/Well Made Plays",
+    "The Chorus Crafters":      "Business/The Chorus Crafters",
+    # Property/
+    "4400 Mount Vernon Drive":  "Property/4400 Mount Vernon Drive",
+    "2300 Southern Oaks":       "Property/2300 Southern Oaks",
+    # Finance/
+    "Tax":                      "Finance/Tax",
+    "Fees and Bills":           "Finance/Fees and Bills",
+    "Banking and Investments":  "Finance/Banking and Investments",
+    # Legal & Government/
+    "Legal":                    "Legal & Government/Legal",
+    "Government":               "Legal & Government/Government",
+    "Politics":                 "Legal & Government/Politics",
+    # Shopping/
+    "Product Purchases":        "Shopping/Product Purchases",
+    "Product Downloads":        "Shopping/Product Downloads",
+    "Licenses and Keys":        "Shopping/Licenses and Keys",
+    "Shipping and Delivery":    "Shopping/Shipping and Delivery",
+    # Security/
+    "Account Security":         "Security/Account Security",
+    "Logins and Verification":  "Security/Logins and Verification",
+    # Health & Travel/
+    "Health and Insurance":     "Health & Travel/Health and Insurance",
+    "Travel":                   "Health & Travel/Travel",
+    # Personal/
+    "Personal":                 "Personal/Personal",
+    "Education":                "Personal/Education",
+    "Employment":               "Personal/Employment",
+}
 
 # Gmail label colors — must use ONLY hex values from Gmail's allowed palette.
-# See: https://developers.google.com/gmail/api/reference/rest/v1/users.labels
 LABEL_COLORS = {
-    # Business entities — bold, distinct colors
-    "Audio Services":           {"textColor": "#ffffff", "backgroundColor": "#fb4c2f"},  # red
-    "Terra Cognita":            {"textColor": "#ffffff", "backgroundColor": "#16a765"},  # green
-    "Well Made Plays":          {"textColor": "#ffffff", "backgroundColor": "#4a86e8"},  # blue
-    "The Chorus Crafters":      {"textColor": "#ffffff", "backgroundColor": "#ffad47"},  # orange
-    "4400 Mount Vernon Drive":  {"textColor": "#ffffff", "backgroundColor": "#a479e2"},  # purple
-    "2300 Southern Oaks":       {"textColor": "#ffffff", "backgroundColor": "#8e63ce"},  # dark purple
-    # Keep categories
-    "Personal":                 {"textColor": "#ffffff", "backgroundColor": "#3dc789"},  # teal green
-    "Tax":                      {"textColor": "#ffffff", "backgroundColor": "#b65775"},  # rose
-    "Fees and Bills":           {"textColor": "#ffffff", "backgroundColor": "#e07798"},  # pink
-    "Government":               {"textColor": "#ffffff", "backgroundColor": "#3c78d8"},  # dark blue
-    "Politics":                 {"textColor": "#ffffff", "backgroundColor": "#285bac"},  # navy
-    "Product Purchases":        {"textColor": "#ffffff", "backgroundColor": "#eba093"},  # salmon
-    "Product Downloads":        {"textColor": "#ffffff", "backgroundColor": "#c9daf8"},  # light blue
-    "Licenses and Keys":        {"textColor": "#ffffff", "backgroundColor": "#a46a21"},  # brown
-    "Finance":                  {"textColor": "#ffffff", "backgroundColor": "#43d692"},  # mint
-    "Health and Insurance":     {"textColor": "#ffffff", "backgroundColor": "#b9e4d0"},  # light green
-    "Travel":                   {"textColor": "#ffffff", "backgroundColor": "#ffd6a2"},  # peach
-    "Legal":                    {"textColor": "#ffffff", "backgroundColor": "#6d9eeb"},  # periwinkle
-    "Education":                {"textColor": "#ffffff", "backgroundColor": "#b694e8"},  # lavender
-    "Employment":               {"textColor": "#ffffff", "backgroundColor": "#a4c2f4"},  # sky blue
-    "Shipping and Delivery":    {"textColor": "#ffffff", "backgroundColor": "#fbc8d9"},  # blush
-    "Account Security":         {"textColor": "#ffffff", "backgroundColor": "#cc3a21"},  # dark red
-    "Logins and Verification":  {"textColor": "#ffffff", "backgroundColor": "#ac2b16"},  # deep red
+    # Business — bold, distinct
+    "Business/Audio Services":           {"textColor": "#ffffff", "backgroundColor": "#fb4c2f"},  # red
+    "Business/Terra Cognita":            {"textColor": "#ffffff", "backgroundColor": "#16a765"},  # green
+    "Business/Well Made Plays":          {"textColor": "#ffffff", "backgroundColor": "#4a86e8"},  # blue
+    "Business/The Chorus Crafters":      {"textColor": "#ffffff", "backgroundColor": "#ffad47"},  # orange
+    # Property
+    "Property/4400 Mount Vernon Drive":  {"textColor": "#ffffff", "backgroundColor": "#a479e2"},  # purple
+    "Property/2300 Southern Oaks":       {"textColor": "#ffffff", "backgroundColor": "#8e63ce"},  # dark purple
+    # Finance
+    "Finance/Tax":                       {"textColor": "#ffffff", "backgroundColor": "#b65775"},  # rose
+    "Finance/Fees and Bills":            {"textColor": "#ffffff", "backgroundColor": "#e07798"},  # pink
+    "Finance/Banking and Investments":   {"textColor": "#ffffff", "backgroundColor": "#149e60"},  # dark green
+    # Legal & Government
+    "Legal & Government/Legal":          {"textColor": "#ffffff", "backgroundColor": "#6d9eeb"},  # periwinkle
+    "Legal & Government/Government":     {"textColor": "#ffffff", "backgroundColor": "#3c78d8"},  # dark blue
+    "Legal & Government/Politics":       {"textColor": "#ffffff", "backgroundColor": "#285bac"},  # navy
+    # Shopping
+    "Shopping/Product Purchases":        {"textColor": "#ffffff", "backgroundColor": "#eba093"},  # salmon
+    "Shopping/Product Downloads":        {"textColor": "#ffffff", "backgroundColor": "#c9daf8"},  # light blue
+    "Shopping/Licenses and Keys":        {"textColor": "#ffffff", "backgroundColor": "#a46a21"},  # brown
+    "Shopping/Shipping and Delivery":    {"textColor": "#ffffff", "backgroundColor": "#fbc8d9"},  # blush
+    # Security
+    "Security/Account Security":         {"textColor": "#ffffff", "backgroundColor": "#cc3a21"},  # dark red
+    "Security/Logins and Verification":  {"textColor": "#ffffff", "backgroundColor": "#ac2b16"},  # deep red
+    # Health & Travel
+    "Health & Travel/Health and Insurance": {"textColor": "#ffffff", "backgroundColor": "#b9e4d0"},  # light green
+    "Health & Travel/Travel":            {"textColor": "#ffffff", "backgroundColor": "#ffd6a2"},  # peach
+    # Personal
+    "Personal/Personal":                 {"textColor": "#ffffff", "backgroundColor": "#3dc789"},  # teal
+    "Personal/Education":                {"textColor": "#ffffff", "backgroundColor": "#b694e8"},  # lavender
+    "Personal/Employment":               {"textColor": "#ffffff", "backgroundColor": "#a4c2f4"},  # sky blue
 }
 
 CLASSIFICATION_SYSTEM_PROMPT = """You are an email triage assistant. Your job is to classify emails into categories so the user's inbox stays clean and organized.
@@ -105,7 +150,7 @@ OWNER'S EMAIL ACCOUNTS: {account_emails}
 - Product Purchases: Order confirmations, purchase receipts, warranty info, product registrations, digital and physical purchases from stores
 - Product Downloads: Software downloads, app purchase confirmations, digital product delivery, download links, installer access
 - Licenses and Keys: Software license keys, product activation codes, serial numbers, registration codes, API keys, certificate files, digital entitlements, license renewal notices
-- Finance: Banking, investment statements, credit card statements, loan documents, Fidelity, brokerage, 401k, financial advisors, Found banking
+- Banking and Investments: Banking, investment statements, credit card statements, loan documents, Fidelity, brokerage, 401k, financial advisors, Found banking
 - Health and Insurance: Medical, dental, vision, prescriptions, insurance policies and claims, doctor correspondence, lab results, EOBs
 - Travel: Flight confirmations, boarding passes, hotel reservations, Airbnb, car rental confirmations, trip itineraries, travel insurance, TSA, airline communications, rental car receipts
 - Legal: Contracts, legal notices, attorney correspondence, lawsuits, legal agreements, terms changes from important services
@@ -268,9 +313,9 @@ class EmailOrganizer:
                     gmail_client.trash_email(email_id)
                     stats["trashed"] += 1
                 else:
-                    # Apply colored category label
+                    # Apply colored category label (nested path)
                     label_name = self._label_name_for_category(category)
-                    color = LABEL_COLORS.get(category)
+                    color = LABEL_COLORS.get(label_name)
                     label_id = gmail_client.get_or_create_label(label_name, color=color)
 
                     if action == "archive":
@@ -295,14 +340,12 @@ class EmailOrganizer:
 
     @staticmethod
     def _label_name_for_category(category: str) -> str:
-        """Map a category to a Gmail label.
+        """Map a classifier category to a nested Gmail label path.
 
-        Every category gets a single top-level label — no nesting.
-        Business entities: "Terra Cognita", "The Chorus Crafters", etc.
-        General categories: "Tax", "Travel", "Finance", etc.
-        Junk categories: "Marketing", "Spam", "Political Junk", etc.
+        e.g. "Terra Cognita" → "Business/Terra Cognita"
+             "Tax" → "Finance/Tax"
         """
-        return category
+        return LABEL_PATH_MAP.get(category, f"Personal/{category}")
 
     def _parse_json(self, text: str) -> dict:
         text = text.strip()

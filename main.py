@@ -306,8 +306,11 @@ def do_apply_labels(config):
         return
     entities = load_entities(config)
     entity_label_map = {
-        key: entity.name
-        for key, entity in entities.items()
+        "chorus_crafters": "Business/The Chorus Crafters",
+        "terra_cognita": "Business/Terra Cognita",
+        "well_made_plays": "Business/Well Made Plays",
+        "mount_vernon": "Property/4400 Mount Vernon Drive",
+        "personal": "Personal/Personal",
     }
     unlabeled = get_unlabeled_emails(limit=200)
     if not unlabeled:
@@ -1448,32 +1451,54 @@ def _do_organize_history(
 # Static mapping: old label name → new category (or "TRASH" to delete emails,
 # "RECLASSIFY" to run through the classifier)
 LABEL_MIGRATION_MAP = {
-    # Old manual labels
-    "Travel":               "Travel",
-    "Travel/Flight Credits": "Travel",
-    "Financial Info":       "Finance",
-    "Music Production":     "RECLASSIFY",       # could be Audio Services, Terra Cognita, etc.
-    "Music & Events":       "RECLASSIFY",       # could be Terra Cognita, Well Made Plays, etc.
-    "Notes":                "Personal",
-    "Rental Management":    "4400 Mount Vernon Drive",
-    "House":                "4400 Mount Vernon Drive",
+    # Old manual labels → new nested paths
+    "Travel":               "Health & Travel/Travel",
+    "Travel/Flight Credits": "Health & Travel/Travel",
+    "Financial Info":       "Finance/Banking and Investments",
+    "Music Production":     "RECLASSIFY",
+    "Music & Events":       "RECLASSIFY",
+    "Notes":                "Personal/Personal",
+    "Rental Management":    "Property/4400 Mount Vernon Drive",
+    "House":                "Property/2300 Southern Oaks",
     # Old Tracker/ prefixed labels
-    "Tracker/Terra Cognita":    "Terra Cognita",
-    "Tracker/Well Made Plays":  "Well Made Plays",
-    # Old Organized/ nested labels → flatten to top-level
+    "Tracker/Terra Cognita":    "Business/Terra Cognita",
+    "Tracker/Well Made Plays":  "Business/Well Made Plays",
+    # Old flat labels from earlier organizer runs → new nested paths
+    "Terra Cognita":            "Business/Terra Cognita",
+    "Well Made Plays":          "Business/Well Made Plays",
+    "Audio Services":           "Business/Audio Services",
+    "The Chorus Crafters":      "Business/The Chorus Crafters",
+    "4400 Mount Vernon Drive":  "Property/4400 Mount Vernon Drive",
+    "Finance":                  "Finance/Banking and Investments",
+    "Tax":                      "Finance/Tax",
+    "Fees and Bills":           "Finance/Fees and Bills",
+    "Account Security":         "Security/Account Security",
+    "Logins and Verification":  "Security/Logins and Verification",
+    "Product Purchases":        "Shopping/Product Purchases",
+    "Product Downloads":        "Shopping/Product Downloads",
+    "Licenses and Keys":        "Shopping/Licenses and Keys",
+    "Shipping and Delivery":    "Shopping/Shipping and Delivery",
+    "Legal":                    "Legal & Government/Legal",
+    "Government":               "Legal & Government/Government",
+    "Politics":                 "Legal & Government/Politics",
+    "Health and Insurance":     "Health & Travel/Health and Insurance",
+    "Personal":                 "Personal/Personal",
+    "Education":                "Personal/Education",
+    "Employment":               "Personal/Employment",
+    # Old Organized/ nested labels → new nested paths
     "Organized/Important":              "RECLASSIFY",
-    "Organized/Logins and Verification": "Logins and Verification",
-    "Organized/Account Security":       "Account Security",
-    "Organized/Finance":                "Finance",
-    "Organized/Fees and Bills":         "Fees and Bills",
-    "Organized/Legal":                  "Legal",
-    "Organized/Shipping and Delivery":  "Shipping and Delivery",
-    "Organized/Travel":                 "Travel",
-    "Organized/Product Purchases":      "Product Purchases",
-    "Organized/Health and Insurance":   "Health and Insurance",
-    "Organized/Personal":               "Personal",
-    "Organized/Tax":                    "Tax",
-    "Organized/Politics":               "Politics",
+    "Organized/Logins and Verification": "Security/Logins and Verification",
+    "Organized/Account Security":       "Security/Account Security",
+    "Organized/Finance":                "Finance/Banking and Investments",
+    "Organized/Fees and Bills":         "Finance/Fees and Bills",
+    "Organized/Legal":                  "Legal & Government/Legal",
+    "Organized/Shipping and Delivery":  "Shopping/Shipping and Delivery",
+    "Organized/Travel":                 "Health & Travel/Travel",
+    "Organized/Product Purchases":      "Shopping/Product Purchases",
+    "Organized/Health and Insurance":   "Health & Travel/Health and Insurance",
+    "Organized/Personal":               "Personal/Personal",
+    "Organized/Tax":                    "Finance/Tax",
+    "Organized/Politics":               "Legal & Government/Politics",
     # Old Organized/Junk/ labels → trash the emails
     "Organized/Junk/Newsletter":        "TRASH",
     "Organized/Junk/Automated Alert":   "TRASH",
