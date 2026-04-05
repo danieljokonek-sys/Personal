@@ -170,8 +170,14 @@ class GmailClient:
             if m
         ]
 
-    def get_or_create_label(self, name: str) -> str:
-        """Return Gmail label ID for the given name, creating it if needed."""
+    def get_or_create_label(self, name: str, color: dict | None = None) -> str:
+        """Return Gmail label ID for the given name, creating it if needed.
+
+        Args:
+            name: Label display name.
+            color: Optional dict with 'textColor' and 'backgroundColor'
+                   using Gmail's allowed hex values.
+        """
         if name in self._label_cache:
             return self._label_cache[name]
         if not self.service:
@@ -180,15 +186,26 @@ class GmailClient:
         for label in result.get("labels", []):
             if label["name"].lower() == name.lower():
                 self._label_cache[name] = label["id"]
+                # Apply color to existing label if provided and not already set
+                if color and not label.get("color"):
+                    try:
+                        self.service.users().labels().update(
+                            userId="me", id=label["id"],
+                            body={"color": color},
+                        ).execute()
+                    except Exception:
+                        pass
                 return label["id"]
         # Create it
+        body: dict = {
+            "name": name,
+            "labelListVisibility": "labelShow",
+            "messageListVisibility": "show",
+        }
+        if color:
+            body["color"] = color
         new_label = self.service.users().labels().create(
-            userId="me",
-            body={
-                "name": name,
-                "labelListVisibility": "labelShow",
-                "messageListVisibility": "show",
-            },
+            userId="me", body=body,
         ).execute()
         self._label_cache[name] = new_label["id"]
         return new_label["id"]

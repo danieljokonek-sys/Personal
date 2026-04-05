@@ -59,6 +59,45 @@ JUNK_CATEGORIES = [
 
 ALL_CATEGORIES = BUSINESS_CATEGORIES + KEEP_CATEGORIES + JUNK_CATEGORIES
 
+# Gmail label colors — each category gets a unique color.
+# Gmail only allows specific hex pairs; these are from the official palette.
+# Format: {"textColor": "#hex", "backgroundColor": "#hex"}
+LABEL_COLORS = {
+    # Business entities — bold, distinct colors
+    "Audio Services":           {"textColor": "#ffffff", "backgroundColor": "#fb4c2f"},  # red
+    "Terra Cognita":            {"textColor": "#ffffff", "backgroundColor": "#16a765"},  # green
+    "Well Made Plays":          {"textColor": "#ffffff", "backgroundColor": "#4a86e8"},  # blue
+    "The Chorus Crafters":      {"textColor": "#ffffff", "backgroundColor": "#ff7537"},  # orange
+    "4400 Mount Vernon Drive":  {"textColor": "#ffffff", "backgroundColor": "#a479e2"},  # purple
+    # Keep categories
+    "Personal":                 {"textColor": "#ffffff", "backgroundColor": "#2da2bb"},  # teal
+    "Tax":                      {"textColor": "#ffffff", "backgroundColor": "#b65775"},  # rose
+    "Fees and Bills":           {"textColor": "#ffffff", "backgroundColor": "#e07798"},  # pink
+    "Government":               {"textColor": "#ffffff", "backgroundColor": "#3c78d8"},  # dark blue
+    "Politics":                 {"textColor": "#ffffff", "backgroundColor": "#285bac"},  # navy
+    "Product Purchases":        {"textColor": "#ffffff", "backgroundColor": "#f2b2a8"},  # salmon
+    "Product Downloads":        {"textColor": "#ffffff", "backgroundColor": "#c9daf8"},  # light blue
+    "Licenses and Keys":        {"textColor": "#ffffff", "backgroundColor": "#a46a21"},  # brown
+    "Finance":                  {"textColor": "#ffffff", "backgroundColor": "#41d692"},  # mint
+    "Health and Insurance":     {"textColor": "#ffffff", "backgroundColor": "#b3efd3"},  # light green
+    "Travel":                   {"textColor": "#ffffff", "backgroundColor": "#ffc8af"},  # peach
+    "Legal":                    {"textColor": "#ffffff", "backgroundColor": "#6d9eeb"},  # periwinkle
+    "Education":                {"textColor": "#ffffff", "backgroundColor": "#b694e8"},  # lavender
+    "Employment":               {"textColor": "#ffffff", "backgroundColor": "#98d7e4"},  # sky
+    "Shipping and Delivery":    {"textColor": "#ffffff", "backgroundColor": "#ebdbde"},  # blush
+    "Account Security":         {"textColor": "#ffffff", "backgroundColor": "#cc3a21"},  # dark red
+    "Logins and Verification":  {"textColor": "#ffffff", "backgroundColor": "#e66550"},  # coral
+    "Important":                {"textColor": "#ffffff", "backgroundColor": "#ffad47"},  # gold
+    # Junk categories — muted/gray tones
+    "Marketing":                {"textColor": "#666666", "backgroundColor": "#efefef"},  # light gray
+    "Newsletter":               {"textColor": "#666666", "backgroundColor": "#e3d7ff"},  # pale purple
+    "Promotional":              {"textColor": "#666666", "backgroundColor": "#fce8b3"},  # pale yellow
+    "Spam":                     {"textColor": "#ffffff", "backgroundColor": "#822111"},  # dark maroon
+    "Social Notification":      {"textColor": "#666666", "backgroundColor": "#d0bcff"},  # pale violet
+    "Automated Alert":          {"textColor": "#666666", "backgroundColor": "#c6f3de"},  # pale green
+    "Political Junk":           {"textColor": "#666666", "backgroundColor": "#d5a6bd"},  # mauve
+}
+
 CLASSIFICATION_SYSTEM_PROMPT = """You are an email triage assistant. Your job is to classify emails into categories so the user's inbox stays clean and organized.
 
 OWNER: {owner_name}
@@ -240,7 +279,8 @@ class EmailOrganizer:
 
             try:
                 label_name = self._label_name_for_category(category)
-                label_id = gmail_client.get_or_create_label(label_name)
+                color = LABEL_COLORS.get(category)
+                label_id = gmail_client.get_or_create_label(label_name, color=color)
 
                 if action == "trash":
                     gmail_client.apply_label(email_id, label_id)
