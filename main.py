@@ -1239,13 +1239,16 @@ def organize_inbox(dry_run, max_emails, account):
 @click.option("--batch-size", default=50, help="Emails per page")
 @click.option("--max-pages", default=20, help="Max pages to process (0 = unlimited)")
 @click.option("--account", default=None, help="Process only this account email")
-def organize_history(dry_run, batch_size, max_pages, account):
-    """Deep-clean historical inbox — pages through all inbox emails."""
+@click.option("--all-mail", is_flag=True, help="Process ALL mail (not just inbox) for comprehensive cleanup")
+@click.option("--model", default=None, help="Override model (e.g. claude-haiku-4-5-20251001 for cheaper runs)")
+def organize_history(dry_run, batch_size, max_pages, account, all_mail, model):
+    """Deep-clean historical email — pages through inbox or all mail."""
     config = get_config()
     init_db()
     _do_organize_history(
         config, dry_run=dry_run, batch_size=batch_size,
         max_pages=max_pages, account_filter=account,
+        all_mail=all_mail, model_override=model,
     )
 
 
@@ -1274,10 +1277,10 @@ def organize_stats():
     console.print(table)
 
 
-def _build_organizer(config) -> EmailOrganizer:
+def _build_organizer(config, model_override: str | None = None) -> EmailOrganizer:
     owner_name = config.get("owner", {}).get("name", "User")
     account_emails = [a["email"] for a in config.get("accounts", [])]
-    model = config.get("organizer", {}).get("model", "claude-sonnet-4-6")
+    model = model_override or config.get("organizer", {}).get("model", "claude-sonnet-4-6")
     batch_size = config.get("organizer", {}).get("batch_size", 25)
     return EmailOrganizer(
         owner_name=owner_name,
@@ -1343,15 +1346,23 @@ def _do_organize(config, dry_run=False, max_emails=100, account_filter=None):
         )
 
 
-def _do_organize_history(config, dry_run=False, batch_size=50, max_pages=20, account_filter=None):
-    """Page through the entire inbox history and organize everything."""
-    organizer = _build_organizer(config)
+def _do_organize_history(
+    config, dry_run=False, batch_size=50, max_pages=20,
+    account_filter=None, all_mail=False, model_override=None,
+):
+    """Page through email history and organize everything.
+
+    With --all-mail: processes ALL emails (excluding sent/drafts/spam/trash).
+    Without: processes only current inbox.
+    """
+    organizer = _build_organizer(config, model_override=model_override)
     clients = build_clients(config)
+    mode_label = "ALL MAIL" if all_mail else "INBOX"
 
     for client in clients:
         if account_filter and client.account_email != account_filter:
             continue
-        console.print(f"\n[bold]Deep-cleaning {client.account_email}...[/bold]")
+        console.print(f"\n[bold]Deep-cleaning {client.account_email} ({mode_label})...[/bold]")
         try:
             client.authenticate()
         except Exception as e:
@@ -1369,9 +1380,14 @@ def _do_organize_history(config, dry_run=False, batch_size=50, max_pages=20, acc
                 break
 
             console.print(f"  Page {page + 1}: fetching up to {batch_size} emails...")
-            emails, next_token = client.fetch_inbox_emails(
-                max_results=batch_size, page_token=page_token
-            )
+            if all_mail:
+                emails, next_token = client.fetch_all_emails_paged(
+                    max_results=batch_size, page_token=page_token
+                )
+            else:
+                emails, next_token = client.fetch_inbox_emails(
+                    max_results=batch_size, page_token=page_token
+                )
 
             if not emails:
                 console.print("  No more emails.")
@@ -1380,7 +1396,7 @@ def _do_organize_history(config, dry_run=False, batch_size=50, max_pages=20, acc
             # Filter already-organized
             new_emails = [e for e in emails if not is_email_organized(e["id"])]
             if not new_emails:
-                console.print(f"  All {len(emails)} emails already organized, skipping...")
+                console.print(f"  All {len(emails)} emails on this page already organized, skipping...")
                 if next_token:
                     page_token = next_token
                     page += 1

@@ -1,7 +1,7 @@
 """
 Email Organizer — Claude-powered inbox categorization, labeling, and cleanup.
 
-Classifies emails into categories (Business, Personal, Tax, etc.),
+Classifies emails into categories (business entities, personal, tax, etc.),
 applies Gmail labels, and archives/trashes junk mail.
 
 Works on both historical inbox cleanup and ongoing new-email triage.
@@ -15,14 +15,23 @@ log = logging.getLogger("organizer")
 
 # ── Categories ──────────────────────────────────────────────────────────────
 
-# Keep categories — these get a Gmail label under "Organized/<name>"
+# Business entity labels — each gets its own top-level Gmail label
+BUSINESS_CATEGORIES = [
+    "Audio Services",
+    "Terra Cognita",
+    "Well Made Plays",
+    "The Chorus Crafters",
+    "4400 Mount Vernon Drive",
+]
+
+# General keep categories
 KEEP_CATEGORIES = [
-    "Business",
     "Personal",
     "Tax",
-    "Fees",
+    "Fees and Bills",
     "Government",
     "Product Purchases",
+    "Product Downloads",
     "Licenses and Keys",
     "Finance",
     "Health and Insurance",
@@ -32,10 +41,11 @@ KEEP_CATEGORIES = [
     "Employment",
     "Shipping and Delivery",
     "Account Security",
+    "Logins and Verification",
     "Important",
 ]
 
-# Junk categories — these get archived or trashed
+# Junk categories — archived or trashed
 JUNK_CATEGORIES = [
     "Marketing",
     "Newsletter",
@@ -43,51 +53,67 @@ JUNK_CATEGORIES = [
     "Spam",
     "Social Notification",
     "Automated Alert",
+    "Political",
 ]
 
-ALL_CATEGORIES = KEEP_CATEGORIES + JUNK_CATEGORIES
+ALL_CATEGORIES = BUSINESS_CATEGORIES + KEEP_CATEGORIES + JUNK_CATEGORIES
 
 CLASSIFICATION_SYSTEM_PROMPT = """You are an email triage assistant. Your job is to classify emails into categories so the user's inbox stays clean and organized.
 
 OWNER: {owner_name}
 OWNER'S EMAIL ACCOUNTS: {account_emails}
 
-## KEEP categories (important — label and keep in inbox or archive neatly):
-- Business: Work-related, client communications, invoices, contracts, B2B
-- Personal: Friends, family, personal correspondence
-- Tax: Tax documents, W-2s, 1099s, tax prep, IRS communications
-- Fees: Bills, subscription charges, payment confirmations, bank fees
-- Government: DMV, city/county/state/federal agencies, voter info, jury duty
-- Product Purchases: Order confirmations, receipts, warranty info, product registrations
-- Licenses and Keys: Software licenses, product keys, activation codes, serial numbers, digital purchases
-- Finance: Banking, investments, credit cards, loan statements, financial advisors
-- Health and Insurance: Medical, dental, vision, prescriptions, insurance policies, claims
-- Travel: Flight confirmations, hotel bookings, car rentals, itineraries
-- Legal: Contracts, agreements, legal notices, attorney correspondence
-- Education: Courses, certifications, training, academic correspondence
-- Employment: Job-related, HR, payroll, benefits, W-2
-- Shipping and Delivery: Package tracking, delivery notifications, shipping confirmations
-- Account Security: Password resets, 2FA codes, security alerts, login notifications
-- Important: Anything important that doesn't fit neatly into the above categories
+## BUSINESS ENTITY categories (the owner's businesses — each gets its own label):
+- Audio Services: Daniel's freelance audio engineering, recording, mixing, mastering, and production work for external clients (NOT Terra Cognita band work)
+- Terra Cognita: Everything related to Daniel's band Terra Cognita — gigs, shows, rehearsals, band member communications, booking inquiries, setlists, merch, social media for the band. Email account: terracognitamusic@gmail.com
+- Well Made Plays: Music management and events company co-run with Douglas Schmidt (Doug Schmidt). Bookings, venue deals, artist management, event logistics, revenue splits, contracts
+- The Chorus Crafters: Custom song company — commissions, client orders, song delivery, revisions, demos, deposits, payments for personalized songs (weddings, memorials, birthdays). Co-run with Dan Hochman. Email account: thechoruscrafters@gmail.com
+- 4400 Mount Vernon Drive: Rental property — tenants, rent, leases, maintenance, repairs, property tax, HOA, contractors, property management
+
+## KEEP categories (important — label and keep):
+- Personal: Friends, family, personal correspondence, personal plans
+- Tax: Tax documents, W-2s, 1099s, tax prep, IRS, state tax agencies, CPA correspondence, estimated tax payments, tax refunds
+- Fees and Bills: Subscription charges, utility bills, payment confirmations, bank fees, service charges, recurring charges, invoices you owe
+- Government: DMV, city/county/state/federal agencies, voter registration, jury duty, census, government benefits, USPS, passport
+- Product Purchases: Order confirmations, purchase receipts, warranty info, product registrations, digital and physical purchases from stores
+- Product Downloads: Software downloads, app purchase confirmations, digital product delivery, download links, installer access
+- Licenses and Keys: Software license keys, product activation codes, serial numbers, registration codes, API keys, certificate files, digital entitlements, license renewal notices
+- Finance: Banking, investment statements, credit card statements, loan documents, Fidelity, brokerage, 401k, financial advisors, Found banking
+- Health and Insurance: Medical, dental, vision, prescriptions, insurance policies and claims, doctor correspondence, lab results, EOBs
+- Travel: Flight confirmations, boarding passes, hotel reservations, Airbnb, car rental confirmations, trip itineraries, travel insurance, TSA, airline communications, rental car receipts
+- Legal: Contracts, legal notices, attorney correspondence, lawsuits, legal agreements, terms changes from important services
+- Education: Courses, certifications, training, academic correspondence, online learning platforms
+- Employment: Job-related (when Daniel is the employee), HR, payroll, benefits enrollment
+- Shipping and Delivery: Package tracking, delivery notifications, shipping confirmations, carrier updates (UPS, FedEx, USPS, Amazon delivery)
+- Account Security: Password resets, two-factor authentication codes, security alerts, breach notifications, recovery codes, backup codes
+- Logins and Verification: Email verification, account verification, new device sign-ins, login confirmations, identity verification, "confirm your email" messages
+- Important: Anything clearly important that doesn't fit the above categories
 
 ## JUNK categories (archive or trash):
-- Marketing: Sales pitches, promotional offers, discount codes, "limited time" offers
-- Newsletter: Email newsletters, digests, blog updates, content roundups
-- Promotional: Deals, coupons, store announcements, product launches
-- Spam: Unsolicited junk, scams, phishing attempts
-- Social Notification: Social media alerts (likes, follows, friend requests), forum notifications
-- Automated Alert: Automated system notifications that aren't security-related, build alerts, CI/CD, monitoring noise
+- Marketing: Sales pitches, promotional offers, discount codes, "limited time" offers, upsell emails, "we miss you" re-engagement
+- Newsletter: Email newsletters, weekly digests, blog updates, content roundups, industry news, "your week in review" from non-financial services
+- Promotional: Deals, coupons, store announcements, product launches, Black Friday, seasonal sales
+- Spam: Unsolicited junk, scams, phishing, lottery winners, Nigerian princes
+- Social Notification: Social media alerts (LinkedIn, Facebook, Instagram, Twitter likes/follows/comments), forum notifications, community digests
+- Automated Alert: Non-critical automated system notifications, CI/CD build alerts, monitoring noise, usage stats from free-tier services, "welcome to X" onboarding drip campaigns
+- Political: Campaign emails, fundraising solicitations, political action committees, candidate endorsements, political petitions
 
-## Rules:
-1. If an email could fit multiple categories, choose the MOST SPECIFIC one
-2. Order confirmations/receipts → "Product Purchases" (not Marketing, even if from a store)
-3. Password resets and 2FA → "Account Security" (not Spam)
-4. Bank statements → "Finance" (not Fees)
-5. Tax-related from employer → "Tax" (not Employment)
-6. A subscription CHARGE/receipt → "Fees"; a subscription PROMO → "Marketing"
-7. Shipping updates for a real order → "Shipping and Delivery" (not Marketing)
-8. License keys or activation emails → "Licenses and Keys"
-9. When in doubt between keep and junk, lean toward KEEP — false negatives (missing important mail) are worse than false positives
+## CRITICAL RULES:
+1. BUSINESS ENTITY FIRST: If an email clearly relates to one of the 5 business entities, use that entity category — even if it also fits a general category
+2. Order confirmations/receipts → "Product Purchases" (NOT Marketing, even if from a store)
+3. Password resets, 2FA codes, new device logins → "Account Security" or "Logins and Verification" (NEVER Spam or Junk)
+4. Software license keys, activation codes, serial numbers → "Licenses and Keys" (NEVER Marketing)
+5. Software/app download confirmations → "Product Downloads" (NEVER Automated Alert)
+6. Flight/hotel/car rental confirmations → "Travel" (NEVER Marketing, even from travel companies)
+7. Bank/investment statements → "Finance" (NOT Fees)
+8. Tax-related from any source → "Tax" (overrides Employment, Finance, etc.)
+9. A subscription CHARGE/receipt → "Fees and Bills"; a subscription PROMO → "Marketing"
+10. Shipping tracking for a real order → "Shipping and Delivery" (NOT Marketing)
+11. Emails FROM the owner TO the owner (self-sends, forwarded texts) → classify by CONTENT, not as Personal
+12. PayPal/Venmo payment receipts → categorize by WHAT was paid for (Canva = "Fees and Bills", band gear = "Terra Cognita", etc.)
+13. Legal agreement changes from services you use (PayPal TOS, etc.) → "Legal"
+14. Found banking weekly reviews for Terra Cognita → "Finance" (NOT Newsletter — it's a real bank statement)
+15. When in doubt between keep and junk, ALWAYS lean toward KEEP
 
 Today's date: {today}
 
@@ -99,9 +125,9 @@ CLASSIFICATION_USER_PROMPT = """Classify each email below. For each, provide:
 - confidence: "high", "medium", or "low"
 
 Guidelines for action:
-- "label": Important emails the user may want to reference or act on (keep in inbox)
-- "archive": Emails worth keeping for records but not needing inbox attention — OR junk that might have opt-out value
-- "trash": Clear spam, phishing, or truly worthless junk
+- "label": Important emails the user should see or reference — business, financial, security, travel, licenses, personal
+- "archive": Emails worth keeping for records but not needing inbox attention — OR junk with opt-out value
+- "trash": Clear spam, phishing, or truly worthless junk with zero reference value
 
 EMAILS:
 {emails_json}
@@ -180,7 +206,7 @@ class EmailOrganizer:
     def classify_and_act(self, emails: list[dict], gmail_client, dry_run: bool = False) -> dict:
         """Classify a batch of emails and apply Gmail labels/actions.
 
-        Returns summary stats: {labeled, archived, trashed, skipped, errors}.
+        Returns (stats, classifications).
         """
         stats = {"labeled": 0, "archived": 0, "trashed": 0, "skipped": 0, "errors": 0}
         classifications = self.classify_batch(emails)
@@ -203,16 +229,10 @@ class EmailOrganizer:
                 continue
 
             try:
-                # Apply category label
-                if category in KEEP_CATEGORIES:
-                    label_name = f"Organized/{category}"
-                else:
-                    label_name = f"Organized/Junk/{category}"
-
+                label_name = self._label_name_for_category(category)
                 label_id = gmail_client.get_or_create_label(label_name)
 
                 if action == "trash":
-                    # Label first so it's categorized even in trash
                     gmail_client.apply_label(email_id, label_id)
                     gmail_client.trash_email(email_id)
                     stats["trashed"] += 1
@@ -235,6 +255,21 @@ class EmailOrganizer:
             stats[k] for k in ("labeled", "archived", "trashed", "errors")
         )
         return stats, classifications
+
+    @staticmethod
+    def _label_name_for_category(category: str) -> str:
+        """Map a category to a Gmail label path.
+
+        Business entities get top-level labels.
+        General keep categories go under Organized/.
+        Junk categories go under Organized/Junk/.
+        """
+        if category in BUSINESS_CATEGORIES:
+            return category  # top-level: "Terra Cognita", "The Chorus Crafters", etc.
+        elif category in JUNK_CATEGORIES:
+            return f"Organized/Junk/{category}"
+        else:
+            return f"Organized/{category}"
 
     def _parse_json(self, text: str) -> dict:
         text = text.strip()

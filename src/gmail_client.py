@@ -243,12 +243,42 @@ class GmailClient:
     ) -> tuple[list[dict], str | None]:
         """Fetch emails from the INBOX, returning (emails, next_page_token).
 
-        Used by the organizer to page through the full inbox.
+        Used by the organizer to page through the current inbox.
         """
+        return self._fetch_emails_paged(
+            base_query="in:inbox", max_results=max_results,
+            page_token=page_token, extra_query=extra_query,
+        )
+
+    def fetch_all_emails_paged(
+        self,
+        max_results: int = 100,
+        page_token: str | None = None,
+        extra_query: str = "",
+    ) -> tuple[list[dict], str | None]:
+        """Fetch ALL emails (not just inbox), returning (emails, next_page_token).
+
+        Used by the organizer for comprehensive historical deep-clean.
+        Excludes sent, drafts, spam, and trash by default.
+        """
+        return self._fetch_emails_paged(
+            base_query="-in:sent -in:drafts -in:spam -in:trash",
+            max_results=max_results, page_token=page_token,
+            extra_query=extra_query,
+        )
+
+    def _fetch_emails_paged(
+        self,
+        base_query: str,
+        max_results: int = 100,
+        page_token: str | None = None,
+        extra_query: str = "",
+    ) -> tuple[list[dict], str | None]:
+        """Internal: fetch a page of emails matching a query."""
         if not self.service:
             self.authenticate()
 
-        q = "in:inbox"
+        q = base_query
         if extra_query:
             q += f" {extra_query}"
 
