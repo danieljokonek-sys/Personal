@@ -146,6 +146,7 @@ Leave any rows blank that you don't need. Click **Next**.
 **Screen 5 — Digest Settings**
 - Enter the email address where you want your daily briefing sent
 - Choose what time you want it (8:00 AM is the default)
+- Each item in your digest will have a reference code (like **[A3]**, **[D5]**) — you can reply to the email with `done A3` to mark items complete
 Click **Next**.
 
 **Screen 6 — Google Cloud Check**
@@ -302,7 +303,33 @@ Go through the wizard again. On the Digest Settings screen, change the time.
 
 ---
 
-You can run any of these anytime in Terminal. They don't affect your scheduled briefing.
+## Reply to Your Digest to Mark Items Done (Easiest Method)
+
+Every item in your daily briefing email has a reference code like **[A3]**, **[D5]**, **[T2]**.
+
+To mark items complete, just **reply to the digest email** with the codes:
+
+| What you type | What it does |
+|---|---|
+| `done A3` | Marks action item #3 as done |
+| `done A3 D5 T2` | Marks three items done at once |
+| `done A3, done D5` | Also works with commas |
+
+**Code meanings:**
+- **A** = Action items
+- **D** = Deadlines
+- **M** = Money / financial items
+- **T** = Tasks
+- **F** = Follow-ups
+- **G** = Agreements
+
+Your replies are processed automatically every time the tracker runs. Items you mark done won't appear in future digests.
+
+---
+
+## Terminal Commands
+
+You can also run any of these anytime in Terminal. They don't affect your scheduled briefing.
 
 **Get your briefing right now (don't wait for morning):**
 ```
@@ -414,8 +441,9 @@ python3 main.py run
 
 *Print this page and keep it somewhere handy*
 
-| Problem | Fix |
+| What you want to do | How |
 |---|---|
+| Mark items done | Reply to digest with `done A3 D5 T2` |
 | No briefing email | Run `python3 main.py run` and check for errors |
 | Gmail auth failed | Delete tokens, run `setup-accounts` |
 | Python not found | Re-run `install.sh` |

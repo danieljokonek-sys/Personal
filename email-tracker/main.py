@@ -12,6 +12,11 @@ Usage:
     python main.py schedule       # Run on recurring schedule (daemon mode)
     python main.py mark <table> <id> <status>  # Update item status
 
+    # Reply-to-digest: mark items done by replying to your briefing email
+    #   Reply with: done A3, done D5 T2, etc.
+    #   Codes: A=action, D=deadline, M=money, T=task, F=follow-up, G=agreement
+    #   Replies are processed automatically during each run/fetch cycle.
+
     # Chorus Crafters order tracking
     python main.py orders list              # Show active order pipeline
     python main.py orders list --all        # Include completed/cancelled

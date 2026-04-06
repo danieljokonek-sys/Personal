@@ -6,7 +6,7 @@ Central hub for all Claude Code created programs and bots.
 
 | Folder | Name | Description |
 |--------|------|-------------|
-| `email-tracker/` | **Email Tracker** | Monitors 3 Gmail accounts, analyzes emails with Claude, tracks deadlines, agreements, action items, and Chorus Crafters song orders. Sends daily digest briefings. |
+| `email-tracker/` | **Email Tracker** | Monitors 3 Gmail accounts, analyzes emails with Claude, tracks deadlines, agreements, action items, and Chorus Crafters song orders. Sends daily digest briefings. Reply to a digest with "done A3" to mark items complete. |
 
 ## Quick Start
 
