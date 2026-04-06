@@ -84,6 +84,15 @@ VITAL_CATEGORIES = {
     "Employment",
 }
 
+# Strict vital — ultra-aggressive cleanup. Only these survive.
+STRICT_VITAL_CATEGORIES = {
+    "Licenses and Keys",        # product keys, serial numbers, activation codes
+    "Product Downloads",        # download links, music software purchases
+    "Account Security",         # recovery codes, backup codes, login credentials
+    "Logins and Verification",  # login info, email verifications
+    "Travel",                   # itineraries, flight info, rental confirmations
+}
+
 ALL_CATEGORIES = KEEP_CATEGORIES + JUNK_CATEGORIES
 
 # Category → nested Gmail label path
@@ -176,7 +185,7 @@ OWNER'S EMAIL ACCOUNTS: {account_emails}
 - Government: DMV, city/county/state/federal agencies, voter registration, jury duty, census, government benefits, USPS, passport
 - Politics: Genuine political correspondence — emails from elected officials or representatives you've contacted, policy updates from YOUR representatives, town hall invitations, constituent services, ballot/election info from official sources. NOT mass fundraising or campaign blasts
 - Product Purchases: Order confirmations, purchase receipts, warranty info, product registrations, digital and physical purchases from stores
-- Product Downloads: Software downloads, app purchase confirmations, digital product delivery, download links, installer access
+- Product Downloads: Software downloads, app purchase confirmations, digital product delivery, download links, installer access. IMPORTANT: ALL music software/plugin purchases (DAW, VST, samples, instruments, effects — iZotope, Native Instruments, Splice, Plugin Alliance, Waves, Valhalla, etc.) go HERE, not Product Purchases
 - Licenses and Keys: Software license keys, product activation codes, serial numbers, registration codes, API keys, certificate files, digital entitlements, license renewal notices
 - Banking and Investments: Banking, investment statements, credit card statements, loan documents, Fidelity, brokerage, 401k, financial advisors, Found banking
 - Health and Insurance: Medical, dental, vision, prescriptions, insurance policies and claims, doctor correspondence, lab results, EOBs
@@ -309,11 +318,14 @@ class EmailOrganizer:
     def classify_and_act(
         self, emails: list[dict], gmail_client,
         dry_run: bool = False, delete_older_than_days: int | None = None,
+        strict: bool = False,
     ) -> dict:
         """Classify a batch of emails and apply Gmail labels/actions.
 
         Args:
             delete_older_than_days: If set, emails older than this many days
+            strict: If True, only STRICT_VITAL_CATEGORIES are protected.
+                    Everything else older than the cutoff gets trashed.
                 are trashed UNLESS they're in a VITAL_CATEGORIES category.
                 Vital emails still get labeled and kept.
 
@@ -345,7 +357,8 @@ class EmailOrganizer:
                     email_date = datetime.fromisoformat(email_date_str)
                     if email_date.tzinfo is None:
                         email_date = email_date.replace(tzinfo=timezone.utc)
-                    if email_date < cutoff and category not in VITAL_CATEGORIES:
+                    protected = STRICT_VITAL_CATEGORIES if strict else VITAL_CATEGORIES
+                    if email_date < cutoff and category not in protected:
                         is_old_and_disposable = True
                 except (ValueError, TypeError):
                     pass

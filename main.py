@@ -1244,18 +1244,30 @@ def organize_inbox(dry_run, max_emails, account):
 @click.option("--account", default=None, help="Process only this account email")
 @click.option("--all-mail", is_flag=True, help="Process ALL mail (not just inbox) for comprehensive cleanup")
 @click.option("--model", default=None, help="Override model (e.g. claude-haiku-4-5-20251001 for cheaper runs)")
-@click.option("--delete-older-than", default=None, type=int, help="Delete non-vital emails older than N months (vital = contracts, keys, licenses, business, tax, etc.)")
+@click.option("--delete-older-than", default=None, type=int, help="Delete non-vital emails older than N months")
+@click.option("--delete-older-days", default=None, type=int, help="Delete non-vital emails older than N days")
+@click.option("--strict", is_flag=True, help="Aggressive mode: only keep logins, keys/licenses, travel, and music software purchases")
 @click.option("--after", default=None, help="Only process emails after this date (YYYY/MM/DD)")
 @click.option("--before", default=None, help="Only process emails before this date (YYYY/MM/DD)")
-def organize_history(dry_run, batch_size, max_pages, account, all_mail, model, delete_older_than, after, before):
+def organize_history(dry_run, batch_size, max_pages, account, all_mail, model, delete_older_than, delete_older_days, strict, after, before):
     """Deep-clean historical email — pages through inbox or all mail."""
     config = get_config()
     init_db()
-    delete_days = delete_older_than * 30 if delete_older_than else None
+
+    if delete_older_days:
+        delete_days = delete_older_days
+    elif delete_older_than:
+        delete_days = delete_older_than * 30
+    else:
+        delete_days = None
+
     if delete_days:
-        from src.organizer import VITAL_CATEGORIES
-        console.print(f"\n[bold yellow]Retention policy: delete non-vital emails older than {delete_older_than} months[/bold yellow]")
-        console.print(f"[green]Protected categories (never deleted):[/green] {', '.join(sorted(VITAL_CATEGORIES))}")
+        from src.organizer import VITAL_CATEGORIES, STRICT_VITAL_CATEGORIES
+        protected = STRICT_VITAL_CATEGORIES if strict else VITAL_CATEGORIES
+        label = f"{delete_days} days"
+        mode = "[bold red]STRICT[/bold red] " if strict else ""
+        console.print(f"\n[bold yellow]{mode}Retention policy: delete non-vital emails older than {label}[/bold yellow]")
+        console.print(f"[green]Protected categories (never deleted):[/green] {', '.join(sorted(protected))}")
         console.print()
 
     # Build Gmail date query
@@ -1273,7 +1285,7 @@ def organize_history(dry_run, batch_size, max_pages, account, all_mail, model, d
         max_pages=max_pages, account_filter=account,
         all_mail=all_mail, model_override=model,
         delete_older_than_days=delete_days,
-        extra_query=date_query,
+        strict=strict, extra_query=date_query,
     )
 
 
@@ -1374,7 +1386,7 @@ def _do_organize(config, dry_run=False, max_emails=100, account_filter=None):
 def _do_organize_history(
     config, dry_run=False, batch_size=50, max_pages=20,
     account_filter=None, all_mail=False, model_override=None,
-    delete_older_than_days=None, extra_query="",
+    delete_older_than_days=None, strict=False, extra_query="",
 ):
     """Page through email history and organize everything.
 
@@ -1436,6 +1448,7 @@ def _do_organize_history(
             stats, classifications = organizer.classify_and_act(
                 new_emails, client, dry_run=dry_run,
                 delete_older_than_days=delete_older_than_days,
+                strict=strict,
             )
 
             for key in total_stats:
