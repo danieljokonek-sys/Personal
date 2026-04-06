@@ -81,7 +81,7 @@ This lets any device reference shared abstractions by name without absolute path
 
 | Device | Type | Description |
 |--------|------|-------------|
-| *(coming soon)* | — | — |
+| [Mix Feedback](devices/effects/mix-feedback/) | Audio Effect | Analyze your mix against 3-5 reference tracks and get specific, per-track mixing suggestions. Uses LOM to scan your session and read device parameters. |
 
 ## Contributing
 

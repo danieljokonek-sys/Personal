@@ -1,0 +1,831 @@
+{
+	"patcher": {
+		"fileversion": 1,
+		"appversion": {
+			"major": 8,
+			"minor": 6,
+			"revision": 0,
+			"architecture": "x64",
+			"modernui": 1
+		},
+		"classnamespace": "box",
+		"rect": [100, 100, 900, 700],
+		"bglocked": 0,
+		"openinpresentation": 1,
+		"default_fontsize": 12.0,
+		"default_fontface": 0,
+		"default_fontname": "Arial",
+		"gridonopen": 1,
+		"gridsize": [15.0, 15.0],
+		"gridsnaponopen": 1,
+		"objectsnaponopen": 1,
+		"statusbarvisible": 2,
+		"toolbarvisible": 0,
+		"lefttoolbarpinned": 0,
+		"toptoolbarpinned": 0,
+		"righttoolbarpinned": 0,
+		"bottomtoolbarpinned": 0,
+		"toolbars_unpinned_last_save": 0,
+		"tallnewobj": 0,
+		"boxanimatetime": 200,
+		"enablehscroll": 1,
+		"enablevscroll": 1,
+		"devicewidth": 600,
+		"description": "Mix Feedback — compare your mix against reference tracks and get specific suggestions for improvement.",
+		"digest": "Personalized mix feedback based on your reference tracks.",
+		"tags": "analysis mixing feedback reference",
+		"style": "",
+		"subpatcher_template": "",
+		"assistshowspatchername": 0,
+		"boxes": [
+			{
+				"box": {
+					"id": "obj-plugin-in",
+					"maxclass": "newobj",
+					"text": "plugin~ 2",
+					"numinlets": 1,
+					"numoutlets": 3,
+					"outlettype": ["signal", "signal", ""],
+					"patching_rect": [30.0, 30.0, 80.0, 22.0]
+				}
+			},
+			{
+				"box": {
+					"id": "obj-plugin-out",
+					"maxclass": "newobj",
+					"text": "plugout~ 2",
+					"numinlets": 3,
+					"numoutlets": 0,
+					"patching_rect": [30.0, 620.0, 80.0, 22.0]
+				}
+			},
+			{
+				"box": {
+					"id": "obj-ref1",
+					"maxclass": "newobj",
+					"text": "buffer~ ref1",
+					"numinlets": 1,
+					"numoutlets": 2,
+					"outlettype": ["float", "bang"],
+					"patching_rect": [200.0, 30.0, 85.0, 22.0]
+				}
+			},
+			{
+				"box": {
+					"id": "obj-ref2",
+					"maxclass": "newobj",
+					"text": "buffer~ ref2",
+					"numinlets": 1,
+					"numoutlets": 2,
+					"outlettype": ["float", "bang"],
+					"patching_rect": [300.0, 30.0, 85.0, 22.0]
+				}
+			},
+			{
+				"box": {
+					"id": "obj-ref3",
+					"maxclass": "newobj",
+					"text": "buffer~ ref3",
+					"numinlets": 1,
+					"numoutlets": 2,
+					"outlettype": ["float", "bang"],
+					"patching_rect": [400.0, 30.0, 85.0, 22.0]
+				}
+			},
+			{
+				"box": {
+					"id": "obj-ref4",
+					"maxclass": "newobj",
+					"text": "buffer~ ref4",
+					"numinlets": 1,
+					"numoutlets": 2,
+					"outlettype": ["float", "bang"],
+					"patching_rect": [500.0, 30.0, 85.0, 22.0]
+				}
+			},
+			{
+				"box": {
+					"id": "obj-ref5",
+					"maxclass": "newobj",
+					"text": "buffer~ ref5",
+					"numinlets": 1,
+					"numoutlets": 2,
+					"outlettype": ["float", "bang"],
+					"patching_rect": [600.0, 30.0, 85.0, 22.0]
+				}
+			},
+			{
+				"box": {
+					"id": "obj-mix-capture",
+					"maxclass": "newobj",
+					"text": "buffer~ mix_capture 30000 2",
+					"numinlets": 1,
+					"numoutlets": 2,
+					"outlettype": ["float", "bang"],
+					"patching_rect": [200.0, 60.0, 180.0, 22.0]
+				}
+			},
+			{
+				"box": {
+					"id": "obj-scan-capture",
+					"maxclass": "newobj",
+					"text": "buffer~ scan_capture 10000 2",
+					"numinlets": 1,
+					"numoutlets": 2,
+					"outlettype": ["float", "bang"],
+					"patching_rect": [400.0, 60.0, 185.0, 22.0]
+				}
+			},
+			{
+				"box": {
+					"id": "obj-record-mix",
+					"maxclass": "newobj",
+					"text": "record~ mix_capture 2",
+					"numinlets": 3,
+					"numoutlets": 1,
+					"outlettype": ["signal"],
+					"patching_rect": [30.0, 150.0, 140.0, 22.0]
+				}
+			},
+			{
+				"box": {
+					"id": "obj-record-scan",
+					"maxclass": "newobj",
+					"text": "record~ scan_capture 2",
+					"numinlets": 3,
+					"numoutlets": 1,
+					"outlettype": ["signal"],
+					"patching_rect": [30.0, 180.0, 145.0, 22.0]
+				}
+			},
+			{
+				"box": {
+					"id": "obj-js-engine",
+					"maxclass": "newobj",
+					"text": "js mix-feedback-engine.js",
+					"numinlets": 3,
+					"numoutlets": 4,
+					"outlettype": ["", "", "", ""],
+					"patching_rect": [200.0, 300.0, 180.0, 22.0]
+				}
+			},
+			{
+				"box": {
+					"id": "obj-jsui-display",
+					"maxclass": "jsui",
+					"numinlets": 1,
+					"numoutlets": 1,
+					"outlettype": [""],
+					"filename": "mf-display.js",
+					"patching_rect": [200.0, 400.0, 580.0, 320.0],
+					"presentation": 1,
+					"presentation_rect": [5.0, 5.0, 580.0, 320.0]
+				}
+			},
+			{
+				"box": {
+					"id": "obj-feedback-text",
+					"maxclass": "textedit",
+					"numinlets": 1,
+					"numoutlets": 4,
+					"outlettype": ["", "int", "", ""],
+					"patching_rect": [450.0, 300.0, 400.0, 300.0],
+					"presentation": 1,
+					"presentation_rect": [5.0, 330.0, 580.0, 280.0],
+					"readonly": 1,
+					"wordwrap": 1,
+					"fontsize": 10,
+					"fontname": "Arial",
+					"textcolor": [0.85, 0.85, 0.85, 1.0],
+					"bgcolor": [0.15, 0.15, 0.17, 1.0],
+					"border": 0,
+					"rounded": 4.0
+				}
+			},
+			{
+				"box": {
+					"id": "obj-load-ref1",
+					"maxclass": "live.text",
+					"numinlets": 1,
+					"numoutlets": 2,
+					"outlettype": ["", ""],
+					"parameter_enable": 1,
+					"text": "Ref 1",
+					"texton": "Ref 1",
+					"mode": 0,
+					"patching_rect": [200.0, 100.0, 50.0, 20.0],
+					"presentation": 1,
+					"presentation_rect": [5.0, 615.0, 50.0, 20.0],
+					"saved_attribute_attributes": {
+						"valueof": {
+							"parameter_shortname": "Ref1",
+							"parameter_longname": "Load Ref 1",
+							"parameter_type": 2,
+							"parameter_mmax": 1.0
+						}
+					}
+				}
+			},
+			{
+				"box": {
+					"id": "obj-load-ref2",
+					"maxclass": "live.text",
+					"numinlets": 1,
+					"numoutlets": 2,
+					"outlettype": ["", ""],
+					"parameter_enable": 1,
+					"text": "Ref 2",
+					"texton": "Ref 2",
+					"mode": 0,
+					"patching_rect": [260.0, 100.0, 50.0, 20.0],
+					"presentation": 1,
+					"presentation_rect": [60.0, 615.0, 50.0, 20.0],
+					"saved_attribute_attributes": {
+						"valueof": {
+							"parameter_shortname": "Ref2",
+							"parameter_longname": "Load Ref 2",
+							"parameter_type": 2,
+							"parameter_mmax": 1.0
+						}
+					}
+				}
+			},
+			{
+				"box": {
+					"id": "obj-load-ref3",
+					"maxclass": "live.text",
+					"numinlets": 1,
+					"numoutlets": 2,
+					"outlettype": ["", ""],
+					"parameter_enable": 1,
+					"text": "Ref 3",
+					"texton": "Ref 3",
+					"mode": 0,
+					"patching_rect": [320.0, 100.0, 50.0, 20.0],
+					"presentation": 1,
+					"presentation_rect": [115.0, 615.0, 50.0, 20.0],
+					"saved_attribute_attributes": {
+						"valueof": {
+							"parameter_shortname": "Ref3",
+							"parameter_longname": "Load Ref 3",
+							"parameter_type": 2,
+							"parameter_mmax": 1.0
+						}
+					}
+				}
+			},
+			{
+				"box": {
+					"id": "obj-load-ref4",
+					"maxclass": "live.text",
+					"numinlets": 1,
+					"numoutlets": 2,
+					"outlettype": ["", ""],
+					"parameter_enable": 1,
+					"text": "Ref 4",
+					"texton": "Ref 4",
+					"mode": 0,
+					"patching_rect": [380.0, 100.0, 50.0, 20.0],
+					"presentation": 1,
+					"presentation_rect": [170.0, 615.0, 50.0, 20.0],
+					"saved_attribute_attributes": {
+						"valueof": {
+							"parameter_shortname": "Ref4",
+							"parameter_longname": "Load Ref 4",
+							"parameter_type": 2,
+							"parameter_mmax": 1.0
+						}
+					}
+				}
+			},
+			{
+				"box": {
+					"id": "obj-load-ref5",
+					"maxclass": "live.text",
+					"numinlets": 1,
+					"numoutlets": 2,
+					"outlettype": ["", ""],
+					"parameter_enable": 1,
+					"text": "Ref 5",
+					"texton": "Ref 5",
+					"mode": 0,
+					"patching_rect": [440.0, 100.0, 50.0, 20.0],
+					"presentation": 1,
+					"presentation_rect": [225.0, 615.0, 50.0, 20.0],
+					"saved_attribute_attributes": {
+						"valueof": {
+							"parameter_shortname": "Ref5",
+							"parameter_longname": "Load Ref 5",
+							"parameter_type": 2,
+							"parameter_mmax": 1.0
+						}
+					}
+				}
+			},
+			{
+				"box": {
+					"id": "obj-analyze-btn",
+					"maxclass": "live.text",
+					"numinlets": 1,
+					"numoutlets": 2,
+					"outlettype": ["", ""],
+					"parameter_enable": 1,
+					"text": "Analyze Mix",
+					"texton": "Analyzing...",
+					"mode": 0,
+					"patching_rect": [200.0, 200.0, 90.0, 22.0],
+					"presentation": 1,
+					"presentation_rect": [310.0, 615.0, 90.0, 20.0],
+					"saved_attribute_attributes": {
+						"valueof": {
+							"parameter_shortname": "Analyze",
+							"parameter_longname": "Analyze Mix",
+							"parameter_type": 2,
+							"parameter_mmax": 1.0
+						}
+					}
+				}
+			},
+			{
+				"box": {
+					"id": "obj-scan-btn",
+					"maxclass": "live.text",
+					"numinlets": 1,
+					"numoutlets": 2,
+					"outlettype": ["", ""],
+					"parameter_enable": 1,
+					"text": "Scan Tracks",
+					"texton": "Scanning...",
+					"mode": 0,
+					"patching_rect": [300.0, 200.0, 90.0, 22.0],
+					"presentation": 1,
+					"presentation_rect": [405.0, 615.0, 90.0, 20.0],
+					"saved_attribute_attributes": {
+						"valueof": {
+							"parameter_shortname": "Scan",
+							"parameter_longname": "Scan Tracks",
+							"parameter_type": 2,
+							"parameter_mmax": 1.0
+						}
+					}
+				}
+			},
+			{
+				"box": {
+					"id": "obj-capture-duration",
+					"maxclass": "live.dial",
+					"numinlets": 1,
+					"numoutlets": 2,
+					"outlettype": ["", "float"],
+					"parameter_enable": 1,
+					"patching_rect": [400.0, 180.0, 44.0, 48.0],
+					"presentation": 1,
+					"presentation_rect": [500.0, 608.0, 44.0, 30.0],
+					"saved_attribute_attributes": {
+						"valueof": {
+							"parameter_shortname": "Length",
+							"parameter_longname": "Capture Length",
+							"parameter_type": 1,
+							"parameter_mmin": 2.0,
+							"parameter_mmax": 30.0,
+							"parameter_initial": [8],
+							"parameter_unitstyle": 2
+						}
+					}
+				}
+			},
+			{
+				"box": {
+					"id": "obj-open-file-1",
+					"maxclass": "newobj",
+					"text": "t b",
+					"numinlets": 1,
+					"numoutlets": 1,
+					"outlettype": ["bang"],
+					"patching_rect": [200.0, 125.0, 30.0, 22.0]
+				}
+			},
+			{
+				"box": {
+					"id": "obj-read-ref1",
+					"maxclass": "message",
+					"text": "read",
+					"numinlets": 2,
+					"numoutlets": 1,
+					"outlettype": [""],
+					"patching_rect": [200.0, 148.0, 35.0, 22.0]
+				}
+			},
+			{
+				"box": {
+					"id": "obj-open-file-2",
+					"maxclass": "newobj",
+					"text": "t b",
+					"numinlets": 1,
+					"numoutlets": 1,
+					"outlettype": ["bang"],
+					"patching_rect": [260.0, 125.0, 30.0, 22.0]
+				}
+			},
+			{
+				"box": {
+					"id": "obj-read-ref2",
+					"maxclass": "message",
+					"text": "read",
+					"numinlets": 2,
+					"numoutlets": 1,
+					"outlettype": [""],
+					"patching_rect": [260.0, 148.0, 35.0, 22.0]
+				}
+			},
+			{
+				"box": {
+					"id": "obj-open-file-3",
+					"maxclass": "newobj",
+					"text": "t b",
+					"numinlets": 1,
+					"numoutlets": 1,
+					"outlettype": ["bang"],
+					"patching_rect": [320.0, 125.0, 30.0, 22.0]
+				}
+			},
+			{
+				"box": {
+					"id": "obj-read-ref3",
+					"maxclass": "message",
+					"text": "read",
+					"numinlets": 2,
+					"numoutlets": 1,
+					"outlettype": [""],
+					"patching_rect": [320.0, 148.0, 35.0, 22.0]
+				}
+			},
+			{
+				"box": {
+					"id": "obj-open-file-4",
+					"maxclass": "newobj",
+					"text": "t b",
+					"numinlets": 1,
+					"numoutlets": 1,
+					"outlettype": ["bang"],
+					"patching_rect": [380.0, 125.0, 30.0, 22.0]
+				}
+			},
+			{
+				"box": {
+					"id": "obj-read-ref4",
+					"maxclass": "message",
+					"text": "read",
+					"numinlets": 2,
+					"numoutlets": 1,
+					"outlettype": [""],
+					"patching_rect": [380.0, 148.0, 35.0, 22.0]
+				}
+			},
+			{
+				"box": {
+					"id": "obj-open-file-5",
+					"maxclass": "newobj",
+					"text": "t b",
+					"numinlets": 1,
+					"numoutlets": 1,
+					"outlettype": ["bang"],
+					"patching_rect": [440.0, 125.0, 30.0, 22.0]
+				}
+			},
+			{
+				"box": {
+					"id": "obj-read-ref5",
+					"maxclass": "message",
+					"text": "read",
+					"numinlets": 2,
+					"numoutlets": 1,
+					"outlettype": [""],
+					"patching_rect": [440.0, 148.0, 35.0, 22.0]
+				}
+			},
+			{
+				"box": {
+					"id": "obj-analyze-refs-msg",
+					"maxclass": "message",
+					"text": "analyze_references",
+					"numinlets": 2,
+					"numoutlets": 1,
+					"outlettype": [""],
+					"patching_rect": [200.0, 240.0, 115.0, 22.0]
+				}
+			},
+			{
+				"box": {
+					"id": "obj-analyze-mix-msg",
+					"maxclass": "message",
+					"text": "analyze_mix",
+					"numinlets": 2,
+					"numoutlets": 1,
+					"outlettype": [""],
+					"patching_rect": [200.0, 265.0, 75.0, 22.0]
+				}
+			},
+			{
+				"box": {
+					"id": "obj-scan-msg",
+					"maxclass": "message",
+					"text": "scan_tracks 4",
+					"numinlets": 2,
+					"numoutlets": 1,
+					"outlettype": [""],
+					"patching_rect": [300.0, 265.0, 85.0, 22.0]
+				}
+			},
+			{
+				"box": {
+					"id": "obj-record-toggle",
+					"maxclass": "newobj",
+					"text": "gate",
+					"numinlets": 2,
+					"numoutlets": 1,
+					"outlettype": [""],
+					"patching_rect": [30.0, 120.0, 35.0, 22.0]
+				}
+			},
+			{
+				"box": {
+					"id": "obj-route-status",
+					"maxclass": "newobj",
+					"text": "route status score ref_count issues scan_start scan_capture scan_complete start_mix_capture",
+					"numinlets": 1,
+					"numoutlets": 9,
+					"outlettype": ["", "", "", "", "", "", "", "", ""],
+					"patching_rect": [200.0, 340.0, 600.0, 22.0]
+				}
+			},
+			{
+				"box": {
+					"id": "obj-thisdevice",
+					"maxclass": "newobj",
+					"text": "live.thisdevice",
+					"numinlets": 0,
+					"numoutlets": 1,
+					"outlettype": [""],
+					"patching_rect": [30.0, 0.0, 95.0, 22.0]
+				}
+			},
+			{
+				"box": {
+					"id": "obj-loadbang",
+					"maxclass": "newobj",
+					"text": "loadbang",
+					"numinlets": 1,
+					"numoutlets": 1,
+					"outlettype": ["bang"],
+					"patching_rect": [700.0, 30.0, 65.0, 22.0]
+				}
+			},
+			{
+				"box": {
+					"id": "obj-init-msg",
+					"maxclass": "message",
+					"text": "get_status",
+					"numinlets": 2,
+					"numoutlets": 1,
+					"outlettype": [""],
+					"patching_rect": [700.0, 55.0, 68.0, 22.0]
+				}
+			}
+		],
+		"lines": [
+			{
+				"patchline": {
+					"source": ["obj-plugin-in", 0],
+					"destination": ["obj-plugin-out", 0]
+				}
+			},
+			{
+				"patchline": {
+					"source": ["obj-plugin-in", 1],
+					"destination": ["obj-plugin-out", 1]
+				}
+			},
+			{
+				"patchline": {
+					"source": ["obj-plugin-in", 0],
+					"destination": ["obj-record-mix", 0]
+				}
+			},
+			{
+				"patchline": {
+					"source": ["obj-plugin-in", 1],
+					"destination": ["obj-record-mix", 1]
+				}
+			},
+			{
+				"patchline": {
+					"source": ["obj-plugin-in", 0],
+					"destination": ["obj-record-scan", 0]
+				}
+			},
+			{
+				"patchline": {
+					"source": ["obj-plugin-in", 1],
+					"destination": ["obj-record-scan", 1]
+				}
+			},
+			{
+				"patchline": {
+					"source": ["obj-load-ref1", 0],
+					"destination": ["obj-open-file-1", 0]
+				}
+			},
+			{
+				"patchline": {
+					"source": ["obj-open-file-1", 0],
+					"destination": ["obj-read-ref1", 0]
+				}
+			},
+			{
+				"patchline": {
+					"source": ["obj-read-ref1", 0],
+					"destination": ["obj-ref1", 0]
+				}
+			},
+			{
+				"patchline": {
+					"source": ["obj-load-ref2", 0],
+					"destination": ["obj-open-file-2", 0]
+				}
+			},
+			{
+				"patchline": {
+					"source": ["obj-open-file-2", 0],
+					"destination": ["obj-read-ref2", 0]
+				}
+			},
+			{
+				"patchline": {
+					"source": ["obj-read-ref2", 0],
+					"destination": ["obj-ref2", 0]
+				}
+			},
+			{
+				"patchline": {
+					"source": ["obj-load-ref3", 0],
+					"destination": ["obj-open-file-3", 0]
+				}
+			},
+			{
+				"patchline": {
+					"source": ["obj-open-file-3", 0],
+					"destination": ["obj-read-ref3", 0]
+				}
+			},
+			{
+				"patchline": {
+					"source": ["obj-read-ref3", 0],
+					"destination": ["obj-ref3", 0]
+				}
+			},
+			{
+				"patchline": {
+					"source": ["obj-load-ref4", 0],
+					"destination": ["obj-open-file-4", 0]
+				}
+			},
+			{
+				"patchline": {
+					"source": ["obj-open-file-4", 0],
+					"destination": ["obj-read-ref4", 0]
+				}
+			},
+			{
+				"patchline": {
+					"source": ["obj-read-ref4", 0],
+					"destination": ["obj-ref4", 0]
+				}
+			},
+			{
+				"patchline": {
+					"source": ["obj-load-ref5", 0],
+					"destination": ["obj-open-file-5", 0]
+				}
+			},
+			{
+				"patchline": {
+					"source": ["obj-open-file-5", 0],
+					"destination": ["obj-read-ref5", 0]
+				}
+			},
+			{
+				"patchline": {
+					"source": ["obj-read-ref5", 0],
+					"destination": ["obj-ref5", 0]
+				}
+			},
+			{
+				"patchline": {
+					"source": ["obj-analyze-btn", 0],
+					"destination": ["obj-analyze-refs-msg", 0]
+				}
+			},
+			{
+				"patchline": {
+					"source": ["obj-analyze-refs-msg", 0],
+					"destination": ["obj-js-engine", 0]
+				}
+			},
+			{
+				"patchline": {
+					"source": ["obj-analyze-mix-msg", 0],
+					"destination": ["obj-js-engine", 0]
+				}
+			},
+			{
+				"patchline": {
+					"source": ["obj-scan-btn", 0],
+					"destination": ["obj-scan-msg", 0]
+				}
+			},
+			{
+				"patchline": {
+					"source": ["obj-scan-msg", 0],
+					"destination": ["obj-js-engine", 0]
+				}
+			},
+			{
+				"patchline": {
+					"source": ["obj-js-engine", 1],
+					"destination": ["obj-feedback-text", 0]
+				}
+			},
+			{
+				"patchline": {
+					"source": ["obj-js-engine", 2],
+					"destination": ["obj-jsui-display", 0]
+				}
+			},
+			{
+				"patchline": {
+					"source": ["obj-js-engine", 3],
+					"destination": ["obj-route-status", 0]
+				}
+			},
+			{
+				"patchline": {
+					"source": ["obj-loadbang", 0],
+					"destination": ["obj-init-msg", 0]
+				}
+			},
+			{
+				"patchline": {
+					"source": ["obj-init-msg", 0],
+					"destination": ["obj-js-engine", 0]
+				}
+			}
+		],
+		"parameters": {
+			"parameterbanks": {
+				"0": {
+					"index": 0,
+					"name": "",
+					"parameters": []
+				}
+			}
+		},
+		"dependency_cache": [
+			{
+				"name": "mix-feedback-engine.js",
+				"bootpath": ".",
+				"type": "TEXT"
+			},
+			{
+				"name": "mf-analysis-core.js",
+				"bootpath": ".",
+				"type": "TEXT"
+			},
+			{
+				"name": "mf-reference-profile.js",
+				"bootpath": ".",
+				"type": "TEXT"
+			},
+			{
+				"name": "mf-track-scanner.js",
+				"bootpath": ".",
+				"type": "TEXT"
+			},
+			{
+				"name": "mf-comparator.js",
+				"bootpath": ".",
+				"type": "TEXT"
+			},
+			{
+				"name": "mf-suggestions.js",
+				"bootpath": ".",
+				"type": "TEXT"
+			},
+			{
+				"name": "mf-display.js",
+				"bootpath": ".",
+				"type": "TEXT"
+			}
+		]
+	}
+}
