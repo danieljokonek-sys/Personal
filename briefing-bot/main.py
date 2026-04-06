@@ -357,11 +357,7 @@ def do_apply_labels(config):
                 labeled_ids.append(email["id"])  # mark as done even if no label
                 continue
             try:
-                label_id = client.get_label(label_name)
-                if not label_id:
-                    # Label doesn't exist in Gmail — skip, don't create
-                    labeled_ids.append(email["id"])
-                    continue
+                label_id = client.get_or_create_label(label_name)
                 client.apply_label(email["id"], label_id)
                 labeled_ids.append(email["id"])
             except Exception as e:
