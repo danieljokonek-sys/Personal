@@ -97,7 +97,9 @@ This is what allows the app to read your Gmail and Calendar. It sounds technical
 
 ## Section 3 — Install the App
 
-1. Copy the **email-tracker** folder onto your Mac desktop
+1. Copy the **email-tracker** folder into your home folder (`/Users/YourName/`)
+   - You can transfer it via flash drive, AirDrop, or download from GitHub
+   - The final location should be: `~/email-tracker/`
 2. Open the **email-tracker** folder — you should see files including `install.sh`
 3. Move the `credentials.json` file from your Downloads folder into the **credentials** folder inside email-tracker:
    ```
@@ -111,7 +113,8 @@ This is what allows the app to read your Gmail and Calendar. It sounds technical
    - Press Enter
 5. Type the following and press Enter:
    ```
-   bash ~/email-tracker/install.sh
+   cd ~/email-tracker
+   bash install.sh
    ```
 6. Your Mac may ask for your password — type it and press Enter (the characters won't show, that's normal)
 7. Wait while it installs. This takes 2–5 minutes. You'll see text scrolling — that's normal.
