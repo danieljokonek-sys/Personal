@@ -1,4 +1,4 @@
-# Personal Communication Tracker
+# Briefing Bot
 ## Complete Setup & Maintenance Guide
 
 *Written for non-technical users. No prior experience needed.*
@@ -268,8 +268,8 @@ Google removed your test user access (this happens automatically after 12 months
 ## Situation 6 — The Briefing Schedule Stopped After a macOS Update
 
 ```
-launchctl unload ~/Library/LaunchAgents/com.personaltracker.daily.plist
-launchctl load ~/Library/LaunchAgents/com.personaltracker.daily.plist
+launchctl unload ~/Library/LaunchAgents/com.briefingbot.daily.plist
+launchctl load ~/Library/LaunchAgents/com.briefingbot.daily.plist
 ```
 
 ---

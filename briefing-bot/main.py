@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Personal Communication Tracker — CLI entry point.
+Briefing Bot — CLI entry point.
 
 Usage:
     python main.py setup          # Initialize DB, authenticate Gmail
@@ -454,7 +454,7 @@ def do_digest(config, digest_type="daily"):
 
 @click.group()
 def cli():
-    """Personal Communication Tracker — your AI-powered business assistant."""
+    """Briefing Bot — your AI-powered daily digest assistant."""
     pass
 
 
@@ -545,7 +545,7 @@ def status():
     init_db()
     summary = get_dashboard_summary()
 
-    table = Table(title="Communication Tracker Status")
+    table = Table(title="Briefing Bot Status")
     table.add_column("Metric", style="bold")
     table.add_column("Value", justify="right")
 

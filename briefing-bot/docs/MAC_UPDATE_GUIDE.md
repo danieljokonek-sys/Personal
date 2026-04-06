@@ -1,5 +1,5 @@
 # What To Do When macOS Updates
-### Personal Communication Tracker — Maintenance Guide
+### Briefing Bot — Maintenance Guide
 
 This guide covers what to check and fix after your Mac receives a software update.
 Most updates require nothing. Occasionally one of the steps below will be needed.
@@ -48,15 +48,15 @@ The installer is safe to re-run — it won't erase your data or settings. It wil
 **Fix — re-register the daily schedule:**
 ```bash
 # Remove old schedule
-launchctl unload ~/Library/LaunchAgents/com.personaltracker.daily.plist 2>/dev/null
+launchctl unload ~/Library/LaunchAgents/com.briefingbot.daily.plist 2>/dev/null
 
 # Re-register it
-launchctl load ~/Library/LaunchAgents/com.personaltracker.daily.plist
+launchctl load ~/Library/LaunchAgents/com.briefingbot.daily.plist
 
 # Verify it's loaded
-launchctl list | grep personaltracker
+launchctl list | grep briefingbot
 ```
-You should see `com.personaltracker.daily` in the output. If the plist file is missing entirely, re-run the setup wizard:
+You should see `com.briefingbot.daily` in the output. If the plist file is missing entirely, re-run the setup wizard:
 ```bash
 python3 setup_wizard.py
 ```
@@ -118,7 +118,7 @@ python3 main.py setup-accounts
 **Fix:**
 1. Go to console.anthropic.com → **Billing** — top up credits if low
 2. Go to **API Keys** — create a new key if needed
-3. Open the `.env` file in the Personal folder and update the key:
+3. Open the `.env` file in the briefing-bot folder and update the key:
 ```bash
 nano ~/briefing-bot/.env
 ```
@@ -176,5 +176,5 @@ Contact the person who set this up for you and send them:
 | API key | `~/briefing-bot/.env` | Anthropic access |
 | Gmail tokens | `~/briefing-bot/credentials/token_*.json` | Gmail authorization |
 | Google credentials | `~/briefing-bot/credentials/credentials.json` | Google Cloud OAuth client |
-| Schedule | `~/Library/LaunchAgents/com.personaltracker.daily.plist` | Daily 8am trigger |
+| Schedule | `~/Library/LaunchAgents/com.briefingbot.daily.plist` | Daily 8am trigger |
 | Database | `~/briefing-bot/data/tracker.db` | All your tracked data |

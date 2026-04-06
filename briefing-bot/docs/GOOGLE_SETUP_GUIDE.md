@@ -1,5 +1,5 @@
 # Google Cloud Setup Guide
-### Personal Communication Tracker
+### Briefing Bot
 
 This guide walks you through the Google Cloud setup required to let the app read your Gmail and Google Calendar. You only need to do this once.
 

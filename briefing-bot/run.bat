@@ -1,5 +1,5 @@
 @echo off
-REM Email Tracker — Quick launcher for Windows
+REM Briefing Bot — Quick launcher for Windows
 REM Double-click this file or run it from PowerShell/CMD
 
 cd /d "%~dp0"

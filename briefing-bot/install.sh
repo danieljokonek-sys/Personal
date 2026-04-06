@@ -1,6 +1,6 @@
 #!/bin/bash
 # ─────────────────────────────────────────────────────────────────────────────
-# Personal Communication Tracker — Mac Installer
+# Briefing Bot — Mac Installer
 # Double-click this file or run: bash install.sh
 # ─────────────────────────────────────────────────────────────────────────────
 set -e
@@ -10,7 +10,7 @@ cd "$DIR"
 
 echo ""
 echo "================================================"
-echo "  Personal Communication Tracker — Installer"
+echo "  Briefing Bot — Installer"
 echo "================================================"
 echo ""
 

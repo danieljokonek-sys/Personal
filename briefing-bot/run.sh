@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Email Tracker — Quick launcher for Mac/Linux
+# Briefing Bot — Quick launcher for Mac/Linux
 
 cd "$(dirname "$0")"
 
