@@ -1,27 +1,10 @@
-# Secrets
 .env
-credentials/token.json
-credentials/credentials.json
-
-# Data
+credentials/
 data/
-
-# Python
 __pycache__/
 *.pyc
-*.pyo
 .venv/
 venv/
-*.egg-info/
-dist/
-build/
-
-# IDE
 .vscode/
 .idea/
-*.swp
-*.swo
-
-# OS
 .DS_Store
-Thumbs.db
