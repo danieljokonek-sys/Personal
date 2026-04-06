@@ -170,8 +170,8 @@ class GmailClient:
             if m
         ]
 
-    def get_or_create_label(self, name: str) -> str:
-        """Return Gmail label ID for the given name, creating it if needed."""
+    def get_label(self, name: str) -> str | None:
+        """Return Gmail label ID for the given name, or None if it doesn't exist."""
         if name in self._label_cache:
             return self._label_cache[name]
         if not self.service:
@@ -181,6 +181,13 @@ class GmailClient:
             if label["name"].lower() == name.lower():
                 self._label_cache[name] = label["id"]
                 return label["id"]
+        return None
+
+    def get_or_create_label(self, name: str) -> str:
+        """Return Gmail label ID for the given name, creating it if needed."""
+        label_id = self.get_label(name)
+        if label_id:
+            return label_id
         # Create it
         new_label = self.service.users().labels().create(
             userId="me",
