@@ -85,6 +85,7 @@ from src.calendar_client import CalendarClient
 from src.analyzer import Analyzer
 from src.digest import DigestGenerator
 from src.scheduler import TrackerScheduler
+from src.reply_parser import process_digest_replies
 from src.orders import (
     STATUS_LABELS,
     STATUS_ORDER,
@@ -213,6 +214,22 @@ def do_fetch_calendar(config):
             log.error(f"  Calendar fetch failed for {client.account_email}: {e}")
 
     return total
+
+
+def do_process_replies(config):
+    """Scan for replies to digest emails and mark items done."""
+    clients = build_clients(config)
+    send_client = get_send_client(config, clients)
+    owner_email = config.get("digest", {}).get("send_to", "")
+    try:
+        send_client.authenticate()
+        count = process_digest_replies(send_client, owner_email)
+        if count:
+            console.print(f"[green]  Marked {count} item(s) done from digest replies[/green]")
+        else:
+            console.print("  No new digest replies found")
+    except Exception as e:
+        log.error(f"  Failed to process digest replies: {e}")
 
 
 def do_detect_follow_ups(config):
@@ -511,6 +528,8 @@ def run():
     do_apply_labels(config)
     console.print("[bold]Detecting follow-ups needed...[/bold]")
     do_detect_follow_ups(config)
+    console.print("[bold]Processing digest replies...[/bold]")
+    do_process_replies(config)
     console.print("[bold]Sending digest...[/bold]")
     do_digest(config)
 
@@ -616,6 +635,7 @@ def schedule_cmd():
         do_fetch_calendar(config)
         do_apply_labels(config)
         do_detect_follow_ups(config)
+        do_process_replies(config)
 
     scheduler = TrackerScheduler(
         fetch_fn=_full_fetch,

@@ -231,6 +231,8 @@ Daniel monitors three Gmail accounts (danieljokonek@gmail.com, thechoruscrafters
 
 Format the briefing as clean HTML for email. Use headers, bullet points, and bold for emphasis. Keep it scannable.
 
+IMPORTANT — Reference codes: Each actionable item in the data has a "ref" field (like "A3", "D5", "T2", "M7", "F1", "G4"). You MUST display the ref code at the start of every item, formatted as a bold gray tag like: <strong style="color:#888;">[A3]</strong>. This lets Daniel reply to the email to mark items done.
+
 Include these sections (skip any with nothing to report):
 1. <h2>🚨 Urgent</h2> — anything due today or overdue, calendar events today/tomorrow, AND any action items or tasks that have been sitting unresolved for 3+ days (call these out by name with how many days they've been waiting)
 2. <h2>🗓 14-Day Horizon</h2> — THE most important section. For EACH calendar event in the next 14 days, create a sub-entry. Under each event, scan through ALL pending items (action items, financial items, deadlines, follow-ups, tasks) and surface anything related to that event. Match items by: (1) same entity/business, (2) due dates falling near the event date, (3) overlapping keywords — client names, venue names, project names, honoree names. Format each event like:
