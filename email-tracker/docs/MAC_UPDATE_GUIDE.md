@@ -16,7 +16,7 @@ Wait until the next morning. If the email arrives — you're done, nothing broke
 ### 2. If no email — test manually
 Open Terminal and run:
 ```bash
-cd ~/Desktop/Personal
+cd ~/email-tracker
 python3 main.py run
 ```
 Read any error messages and match them to the sections below.
@@ -34,7 +34,7 @@ Read any error messages and match them to the sections below.
 **Fix:**
 ```bash
 # Reinstall dependencies
-cd ~/Desktop/Personal
+cd ~/email-tracker
 bash install.sh
 ```
 The installer is safe to re-run — it won't erase your data or settings. It will reinstall Python and all packages.
@@ -69,7 +69,7 @@ python3 setup_wizard.py
 
 **Fix — re-authorize Gmail:**
 ```bash
-cd ~/Desktop/Personal
+cd ~/email-tracker
 rm -f credentials/token_*.json
 python3 main.py setup-accounts
 ```
@@ -120,7 +120,7 @@ python3 main.py setup-accounts
 2. Go to **API Keys** — create a new key if needed
 3. Open the `.env` file in the Personal folder and update the key:
 ```bash
-nano ~/Desktop/Personal/.env
+nano ~/email-tracker/.env
 ```
 Change the line to:
 ```
@@ -140,7 +140,7 @@ Press `Ctrl+X`, then `Y`, then `Enter` to save.
 brew install python@3.11
 
 # Re-run the installer pointing at that version
-python3.11 -m pip install -r ~/Desktop/Personal/requirements.txt
+python3.11 -m pip install -r ~/email-tracker/requirements.txt
 ```
 Then update the launchd plist to use `python3.11` explicitly instead of `python3`.
 
@@ -172,9 +172,9 @@ Contact the person who set this up for you and send them:
 
 | File | Location | What it does |
 |---|---|---|
-| App folder | `~/Desktop/Personal/` | Everything lives here |
-| API key | `~/Desktop/Personal/.env` | Anthropic access |
-| Gmail tokens | `~/Desktop/Personal/credentials/token_*.json` | Gmail authorization |
-| Google credentials | `~/Desktop/Personal/credentials/credentials.json` | Google Cloud OAuth client |
+| App folder | `~/email-tracker/` | Everything lives here |
+| API key | `~/email-tracker/.env` | Anthropic access |
+| Gmail tokens | `~/email-tracker/credentials/token_*.json` | Gmail authorization |
+| Google credentials | `~/email-tracker/credentials/credentials.json` | Google Cloud OAuth client |
 | Schedule | `~/Library/LaunchAgents/com.personaltracker.daily.plist` | Daily 8am trigger |
-| Database | `~/Desktop/Personal/data/tracker.db` | All your tracked data |
+| Database | `~/email-tracker/data/tracker.db` | All your tracked data |

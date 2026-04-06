@@ -97,11 +97,11 @@ This is what allows the app to read your Gmail and Calendar. It sounds technical
 
 ## Section 3 — Install the App
 
-1. Copy the **PersonalTracker** folder onto your Mac desktop
-2. Open the **PersonalTracker** folder — you should see files including `install.sh`
-3. Move the `credentials.json` file from your Downloads folder into the **credentials** folder inside PersonalTracker:
+1. Copy the **email-tracker** folder onto your Mac desktop
+2. Open the **email-tracker** folder — you should see files including `install.sh`
+3. Move the `credentials.json` file from your Downloads folder into the **credentials** folder inside email-tracker:
    ```
-   PersonalTracker/
+   email-tracker/
      credentials/
        credentials.json   ← put it here
    ```
@@ -111,7 +111,7 @@ This is what allows the app to read your Gmail and Calendar. It sounds technical
    - Press Enter
 5. Type the following and press Enter:
    ```
-   bash ~/Desktop/PersonalTracker/install.sh
+   bash ~/email-tracker/install.sh
    ```
 6. Your Mac may ask for your password — type it and press Enter (the characters won't show, that's normal)
 7. Wait while it installs. This takes 2–5 minutes. You'll see text scrolling — that's normal.
@@ -165,7 +165,7 @@ Your app is set up. Click **Finish**.
 
 To make sure everything is working, open Terminal and run:
 ```
-cd ~/Desktop/PersonalTracker
+cd ~/email-tracker
 python3 main.py run
 ```
 
@@ -192,7 +192,7 @@ Most of the time you'll need to do nothing. Your briefing will just arrive each 
 
 Open Terminal and run:
 ```
-cd ~/Desktop/PersonalTracker
+cd ~/email-tracker
 python3 main.py run
 ```
 
@@ -205,7 +205,7 @@ Read any red error text and find the matching situation below.
 Google periodically requires you to re-authorize. Takes 2 minutes.
 
 ```
-cd ~/Desktop/PersonalTracker
+cd ~/email-tracker
 rm credentials/token_*.json
 python3 main.py setup-accounts
 ```
@@ -222,7 +222,7 @@ Done — your briefings will resume.
 A Mac update replaced or moved your Python installation.
 
 ```
-cd ~/Desktop/PersonalTracker
+cd ~/email-tracker
 bash install.sh
 ```
 
@@ -239,7 +239,7 @@ Your Anthropic credits ran out.
 3. Purchase $10 or more
 4. Run your briefing again:
    ```
-   python3 ~/Desktop/PersonalTracker/main.py run
+   python3 ~/email-tracker/main.py run
    ```
 
 ---
@@ -255,8 +255,8 @@ Google removed your test user access (this happens automatically after 12 months
 5. Re-add your Gmail address(es) → click **Save**
 6. Then in Terminal:
    ```
-   rm ~/Desktop/PersonalTracker/credentials/token_*.json
-   python3 ~/Desktop/PersonalTracker/main.py setup-accounts
+   rm ~/email-tracker/credentials/token_*.json
+   python3 ~/email-tracker/main.py setup-accounts
    ```
 
 ---
@@ -274,7 +274,7 @@ launchctl load ~/Library/LaunchAgents/com.personaltracker.daily.plist
 
 Open Terminal:
 ```
-python3 ~/Desktop/PersonalTracker/setup_wizard.py
+python3 ~/email-tracker/setup_wizard.py
 ```
 
 Go through the wizard again. On the Digest Settings screen, change the time.
@@ -285,7 +285,7 @@ Go through the wizard again. On the Digest Settings screen, change the time.
 
 1. Open Terminal and run:
    ```
-   cd ~/Desktop/PersonalTracker
+   cd ~/email-tracker
    python3 main.py run
    ```
 2. Take a screenshot of everything in the Terminal window
@@ -303,7 +303,7 @@ You can run any of these anytime in Terminal. They don't affect your scheduled b
 
 **Get your briefing right now (don't wait for morning):**
 ```
-cd ~/Desktop/PersonalTracker
+cd ~/email-tracker
 python3 main.py run
 ```
 
@@ -374,8 +374,8 @@ Google automatically removes access for apps in "test mode" after one year.
 4. **Test users** → **+ Add Users** → re-add your Gmail addresses → **Save**
 5. Then re-authorize:
    ```
-   rm ~/Desktop/PersonalTracker/credentials/token_*.json
-   python3 ~/Desktop/PersonalTracker/main.py setup-accounts
+   rm ~/email-tracker/credentials/token_*.json
+   python3 ~/email-tracker/main.py setup-accounts
    ```
 
 ---
@@ -393,7 +393,7 @@ Google automatically removes access for apps in "test mode" after one year.
 Run these three things in order:
 
 ```
-cd ~/Desktop/PersonalTracker
+cd ~/email-tracker
 bash install.sh
 rm credentials/token_*.json
 python3 main.py setup-accounts
@@ -421,8 +421,8 @@ python3 main.py run
 | Schedule stopped | Reload with `launchctl` commands |
 | Something else | Screenshot Terminal + send to your contact |
 
-**Your app folder:** `~/Desktop/PersonalTracker/`
-**Your API key file:** `~/Desktop/PersonalTracker/.env`
-**Your Google credentials:** `~/Desktop/PersonalTracker/credentials/`
+**Your app folder:** `~/email-tracker/`
+**Your API key file:** `~/email-tracker/.env`
+**Your Google credentials:** `~/email-tracker/credentials/`
 **Anthropic billing:** https://console.anthropic.com
 **Google Cloud:** https://console.cloud.google.com
