@@ -179,20 +179,28 @@ def _migrate(conn: sqlite3.Connection):
             updated_at TEXT DEFAULT CURRENT_TIMESTAMP
         );
         CREATE TABLE IF NOT EXISTS song_orders (
-            order_id TEXT PRIMARY KEY,
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            email_id TEXT,
             entity_key TEXT DEFAULT 'chorus_crafters',
             client_name TEXT,
             client_email TEXT,
             client_phone TEXT,
-            song_title TEXT,
-            occasion TEXT,
+            event_type TEXT,
             event_date TEXT,
-            delivery_deadline TEXT,
-            quote_amount REAL,
+            honoree_names TEXT,
+            event_notes TEXT,
+            song_style TEXT,
+            song_story TEXT,
+            reference_songs TEXT,
+            revisions_included INTEGER DEFAULT 2,
+            revisions_used INTEGER DEFAULT 0,
+            price REAL,
             deposit_amount REAL,
-            balance_due REAL,
             deposit_paid INTEGER DEFAULT 0,
+            deposit_date TEXT,
+            balance_due REAL,
             balance_paid INTEGER DEFAULT 0,
+            balance_date TEXT,
             demo_delivered INTEGER DEFAULT 0,
             demo_date TEXT,
             final_delivered INTEGER DEFAULT 0,
@@ -203,6 +211,33 @@ def _migrate(conn: sqlite3.Connection):
             updated_at TEXT DEFAULT CURRENT_TIMESTAMP
         );
     """)
+    # Migrate song_orders table — add columns that newer code expects
+    try:
+        order_cols = {row[1] for row in conn.execute("PRAGMA table_info(song_orders)")}
+        order_migrations = [
+            ("email_id", "TEXT"),
+            ("event_type", "TEXT"),
+            ("honoree_names", "TEXT"),
+            ("event_notes", "TEXT"),
+            ("song_style", "TEXT"),
+            ("song_story", "TEXT"),
+            ("reference_songs", "TEXT"),
+            ("revisions_included", "INTEGER DEFAULT 2"),
+            ("revisions_used", "INTEGER DEFAULT 0"),
+            ("price", "REAL"),
+            ("deposit_date", "TEXT"),
+            ("balance_date", "TEXT"),
+        ]
+        for col, col_def in order_migrations:
+            if col not in order_cols:
+                conn.execute(f"ALTER TABLE song_orders ADD COLUMN {col} {col_def}")
+        # Migrate quote_amount → price if old column exists and price was just added
+        if "quote_amount" in order_cols and "price" not in order_cols:
+            conn.execute("UPDATE song_orders SET price = quote_amount WHERE price IS NULL")
+        conn.commit()
+    except Exception:
+        pass
+
     # Indexes on new tables/columns (safe now that tables and columns exist)
     conn.executescript("""
         CREATE INDEX IF NOT EXISTS idx_emails_account ON emails(account_email);
