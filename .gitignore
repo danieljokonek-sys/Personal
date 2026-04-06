@@ -1,27 +1,45 @@
-# Secrets
-.env
-credentials/token.json
-credentials/credentials.json
+# Max/MSP & Max for Live
+*.maxpresets
+*.maxdefault
+*.maxrecentfiles
 
-# Data
-data/
+# macOS
+.DS_Store
+._*
+.AppleDouble
+.LSOverride
+Icon?
 
-# Python
-__pycache__/
-*.pyc
-*.pyo
-.venv/
-venv/
-*.egg-info/
-dist/
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Build artifacts
 build/
+dist/
+*.egg-info/
 
-# IDE
+# Logs
+*.log
+
+# IDE / Editor
 .vscode/
 .idea/
 *.swp
 *.swo
+*~
 
-# OS
-.DS_Store
-Thumbs.db
+# Node (if using RNBO or JS tooling)
+node_modules/
+package-lock.json
+
+# Python (if using scripting)
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Ableton
+Backup/
+*.als.bak
