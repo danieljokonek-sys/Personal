@@ -6,14 +6,14 @@ Central hub for all Claude Code created programs and bots.
 
 | Folder | Name | Description |
 |--------|------|-------------|
-| `email-tracker/` | **Email Tracker** | Monitors 3 Gmail accounts, analyzes emails with Claude, tracks deadlines, agreements, action items, and Chorus Crafters song orders. Sends daily digest briefings. Reply to a digest with "done A3" to mark items complete. |
+| `briefing-bot/` | **Briefing Bot** | Monitors 3 Gmail accounts, analyzes emails with Claude, tracks deadlines, agreements, action items, and Chorus Crafters song orders. Sends daily digest briefings. Reply to a digest with "done A3" to mark items complete. |
 
 ## Quick Start
 
 Each project is self-contained. To run one:
 
 ```bash
-cd email-tracker
+cd briefing-bot
 pip install -r requirements.txt
 python main.py run
 ```
@@ -29,7 +29,7 @@ Create a new folder at the root level with a simple, descriptive name:
 
 ```
 Claude Bots/
-├── email-tracker/
+├── briefing-bot/
 ├── your-new-bot/
 └── another-project/
 ```

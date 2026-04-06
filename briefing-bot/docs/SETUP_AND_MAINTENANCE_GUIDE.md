@@ -97,13 +97,13 @@ This is what allows the app to read your Gmail and Calendar. It sounds technical
 
 ## Section 3 — Install the App
 
-1. Copy the **email-tracker** folder into your home folder (`/Users/YourName/`)
+1. Copy the **briefing-bot** folder into your home folder (`/Users/YourName/`)
    - You can transfer it via flash drive, AirDrop, or download from GitHub
-   - The final location should be: `~/email-tracker/`
-2. Open the **email-tracker** folder — you should see files including `install.sh`
-3. Move the `credentials.json` file from your Downloads folder into the **credentials** folder inside email-tracker:
+   - The final location should be: `~/briefing-bot/`
+2. Open the **briefing-bot** folder — you should see files including `install.sh`
+3. Move the `credentials.json` file from your Downloads folder into the **credentials** folder inside briefing-bot:
    ```
-   email-tracker/
+   briefing-bot/
      credentials/
        credentials.json   ← put it here
    ```
@@ -113,7 +113,7 @@ This is what allows the app to read your Gmail and Calendar. It sounds technical
    - Press Enter
 5. Type the following and press Enter:
    ```
-   cd ~/email-tracker
+   cd ~/briefing-bot
    bash install.sh
    ```
 6. Your Mac may ask for your password — type it and press Enter (the characters won't show, that's normal)
@@ -169,7 +169,7 @@ Your app is set up. Click **Finish**.
 
 To make sure everything is working, open Terminal and run:
 ```
-cd ~/email-tracker
+cd ~/briefing-bot
 python3 main.py run
 ```
 
@@ -196,7 +196,7 @@ Most of the time you'll need to do nothing. Your briefing will just arrive each 
 
 Open Terminal and run:
 ```
-cd ~/email-tracker
+cd ~/briefing-bot
 python3 main.py run
 ```
 
@@ -209,7 +209,7 @@ Read any red error text and find the matching situation below.
 Google periodically requires you to re-authorize. Takes 2 minutes.
 
 ```
-cd ~/email-tracker
+cd ~/briefing-bot
 rm credentials/token_*.json
 python3 main.py setup-accounts
 ```
@@ -226,7 +226,7 @@ Done — your briefings will resume.
 A Mac update replaced or moved your Python installation.
 
 ```
-cd ~/email-tracker
+cd ~/briefing-bot
 bash install.sh
 ```
 
@@ -243,7 +243,7 @@ Your Anthropic credits ran out.
 3. Purchase $10 or more
 4. Run your briefing again:
    ```
-   python3 ~/email-tracker/main.py run
+   python3 ~/briefing-bot/main.py run
    ```
 
 ---
@@ -259,8 +259,8 @@ Google removed your test user access (this happens automatically after 12 months
 5. Re-add your Gmail address(es) → click **Save**
 6. Then in Terminal:
    ```
-   rm ~/email-tracker/credentials/token_*.json
-   python3 ~/email-tracker/main.py setup-accounts
+   rm ~/briefing-bot/credentials/token_*.json
+   python3 ~/briefing-bot/main.py setup-accounts
    ```
 
 ---
@@ -278,7 +278,7 @@ launchctl load ~/Library/LaunchAgents/com.personaltracker.daily.plist
 
 Open Terminal:
 ```
-python3 ~/email-tracker/setup_wizard.py
+python3 ~/briefing-bot/setup_wizard.py
 ```
 
 Go through the wizard again. On the Digest Settings screen, change the time.
@@ -289,7 +289,7 @@ Go through the wizard again. On the Digest Settings screen, change the time.
 
 1. Open Terminal and run:
    ```
-   cd ~/email-tracker
+   cd ~/briefing-bot
    python3 main.py run
    ```
 2. Take a screenshot of everything in the Terminal window
@@ -333,7 +333,7 @@ You can also run any of these anytime in Terminal. They don't affect your schedu
 
 **Get your briefing right now (don't wait for morning):**
 ```
-cd ~/email-tracker
+cd ~/briefing-bot
 python3 main.py run
 ```
 
@@ -404,8 +404,8 @@ Google automatically removes access for apps in "test mode" after one year.
 4. **Test users** → **+ Add Users** → re-add your Gmail addresses → **Save**
 5. Then re-authorize:
    ```
-   rm ~/email-tracker/credentials/token_*.json
-   python3 ~/email-tracker/main.py setup-accounts
+   rm ~/briefing-bot/credentials/token_*.json
+   python3 ~/briefing-bot/main.py setup-accounts
    ```
 
 ---
@@ -423,7 +423,7 @@ Google automatically removes access for apps in "test mode" after one year.
 Run these three things in order:
 
 ```
-cd ~/email-tracker
+cd ~/briefing-bot
 bash install.sh
 rm credentials/token_*.json
 python3 main.py setup-accounts
@@ -452,8 +452,8 @@ python3 main.py run
 | Schedule stopped | Reload with `launchctl` commands |
 | Something else | Screenshot Terminal + send to your contact |
 
-**Your app folder:** `~/email-tracker/`
-**Your API key file:** `~/email-tracker/.env`
-**Your Google credentials:** `~/email-tracker/credentials/`
+**Your app folder:** `~/briefing-bot/`
+**Your API key file:** `~/briefing-bot/.env`
+**Your Google credentials:** `~/briefing-bot/credentials/`
 **Anthropic billing:** https://console.anthropic.com
 **Google Cloud:** https://console.cloud.google.com

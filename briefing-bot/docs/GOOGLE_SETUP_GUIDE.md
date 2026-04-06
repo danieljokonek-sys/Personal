@@ -74,7 +74,7 @@ This guide walks you through the Google Cloud setup required to let the app read
 1. Rename the downloaded file to exactly: **`credentials.json`**
 2. Move it into the `credentials` folder inside the app folder:
    ```
-   email-tracker/
+   briefing-bot/
      credentials/
        credentials.json   ← put it here
    ```
@@ -96,7 +96,7 @@ Go back to the setup wizard and click **"I've completed these steps"**. It will 
 → Double-check Steps 2 and 3 — make sure both Gmail API and Calendar API show as "Enabled"
 
 **Can't find the credentials folder**
-→ It's inside the email-tracker app folder, same place as this guide
+→ It's inside the briefing-bot app folder, same place as this guide
 
 **Still stuck?**
 → Email the person who shared this app with you and include a screenshot of the error
