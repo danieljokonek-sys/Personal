@@ -33,13 +33,29 @@ C:\Users\Owner\Claude Bots\max4live bots\
 
 This folder maps to the root of this repository.
 
-### Installation
+### Quick Setup (Windows / PowerShell)
 
-1. Add the `devices/` folder to your Ableton Live User Library, or copy/symlink individual `.amxd` files into:
+Open PowerShell and run:
+
+```powershell
+# Clone the repo and set up device symlinks in one step
+.\scripts\setup-windows.ps1
+```
+
+This will clone the repo, verify all device files, and create a symlink in Ableton's User Library so devices appear in Live's browser automatically.
+
+### Manual Installation
+
+1. Add the `devices\` folder to your Ableton Live User Library, or copy individual `.amxd` files into:
    - **Windows:** `C:\Users\Owner\Documents\Ableton\User Library\Presets\Max Audio Effect\` (or MIDI Effect / Instruments)
    - **macOS:** `~/Music/Ableton/User Library/Presets/Max Audio Effect/`
 
-2. Restart Ableton Live. Your devices will appear in the browser under **User Library**.
+2. **Add JS files to Max's search path** (required for devices with JavaScript):
+   - Open Max editor via any M4L device
+   - **Options > File Preferences > +**
+   - Add the folder containing the `.amxd` and its `.js` files
+
+3. Restart Ableton Live. Your devices will appear in the browser under **User Library**.
 
 ## Development Workflow
 
@@ -64,9 +80,12 @@ This folder maps to the root of this repository.
 
 Max `.amxd` and `.maxpat` files are JSON-based. To get cleaner diffs:
 
-```bash
-# View a readable diff of a Max patcher
-python scripts/maxpat_diff.py devices/effects/my-effect.amxd
+```powershell
+# View a readable summary of a Max patcher
+python scripts\maxpat_diff.py devices\effects\my-effect.amxd
+
+# Diff two versions of a patcher
+python scripts\maxpat_diff.py old-version.amxd new-version.amxd
 ```
 
 ### Shared Abstractions (lib/)
