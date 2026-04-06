@@ -30,6 +30,58 @@
 - **live.dial / live.slider / live.menu** — UI objects that auto-map to Live parameters
 - **pattr / autopattr** — parameter storage and recall
 
+## Cross-Platform Compatibility (PC + Mac)
+
+All devices in this repo **must** work on both Windows and macOS. Follow these rules:
+
+### File Paths
+
+- **Never use absolute paths** in patchers. No `C:\...` or `/Users/...` references.
+- Use **relative paths** for all file references (samples, abstractions, sub-patchers).
+- Use Max's **search path** mechanism (`Options > File Preferences`) instead of hardcoded paths.
+- Abstractions in `lib/` are referenced by name only (e.g., `m4l.lfo`) — Max resolves them via search path.
+- If a device loads external files at runtime (samples, config), use `conformpath` or `filepath` objects to normalize paths across OS.
+
+### Externals & Dependencies
+
+- **Avoid platform-specific externals.** Only use externals that ship builds for both `.mxe64` (Windows) and `.mxo` (macOS).
+- Prefer built-in Max objects and `gen~` over third-party externals whenever possible — this guarantees cross-platform support with zero dependencies.
+- If an external is required, document it in the device's doc file and verify it has both PC and Mac builds before using it.
+- **Never use shell/system commands** (`shell`, `aka.osascript`, `mxj`) that are OS-specific.
+
+### File Naming
+
+- Use **lowercase with hyphens** for all filenames (e.g., `granular-delay.amxd`).
+- Avoid spaces, special characters, and characters illegal on Windows (`< > : " / \ | ? *`).
+- Keep filenames under 60 characters to avoid Windows path length issues.
+
+### Audio & DSP
+
+- Do not assume a specific sample rate — always query `dspstate~` and adapt.
+- Use `gen~` for DSP where possible — it compiles natively on both platforms.
+- Avoid platform-specific audio driver assumptions in device logic.
+
+### UI & Fonts
+
+- Use only **Max built-in fonts** (Arial, Lato, Ableton Sans) — custom fonts may not be installed on all systems.
+- Use `live.*` UI objects which render consistently across platforms.
+- Test that device width/height renders correctly on both OS (Windows may have different DPI scaling).
+
+### JavaScript (js/jsui)
+
+- If using `js` or `jsui` objects, avoid Node.js-style or OS-specific APIs.
+- Use forward slashes (`/`) in any path strings within JS code — Max normalizes these on both platforms.
+- Do not use `system()` or `exec()` calls.
+
+### Checklist for Every Device
+
+- [ ] No absolute file paths anywhere in the patcher
+- [ ] No platform-specific externals
+- [ ] Filenames are lowercase, no spaces, no special characters
+- [ ] Fonts are Max built-ins only
+- [ ] Sample rate independent (queries `dspstate~`)
+- [ ] All dependencies documented in device doc
+
 ## Best Practices
 
 ### Performance
@@ -96,3 +148,6 @@ Common patterns:
 4. Check CPU usage with Live's CPU meter
 5. Test with different sample rates (44.1k, 48k, 96k)
 6. Verify the device freezes/flattens correctly
+7. **Cross-platform:** Test on both Windows and macOS before tagging a release
+8. **Cross-platform:** Verify no missing externals or broken paths on either OS
+9. **Cross-platform:** Check UI layout renders correctly on both (DPI differences)
