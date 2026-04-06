@@ -23,19 +23,23 @@ scripts/         — Build, export, and utility scripts
 - [Ableton Live Suite](https://www.ableton.com/en/live/) (11 or later recommended)
 - [Max 8](https://cycling74.com/products/max) (bundled with Live Suite, or standalone license)
 
+### Local Development Path
+
+All local development lives in:
+
+```
+C:\Users\Owner\Claude Bots\max4live bots\
+```
+
+This folder maps to the root of this repository.
+
 ### Installation
 
-1. Clone this repository:
-   ```bash
-   git clone https://github.com/danieljokonek-sys/personal.git
-   cd personal
-   ```
+1. Add the `devices/` folder to your Ableton Live User Library, or copy/symlink individual `.amxd` files into:
+   - **Windows:** `C:\Users\Owner\Documents\Ableton\User Library\Presets\Max Audio Effect\` (or MIDI Effect / Instruments)
+   - **macOS:** `~/Music/Ableton/User Library/Presets/Max Audio Effect/`
 
-2. Add the `devices/` folder to your Ableton Live User Library, or copy/symlink individual `.amxd` files into:
-   - **macOS:** `~/Music/Ableton/User Library/Presets/Max Audio Effect/` (or MIDI Effect / Instruments)
-   - **Windows:** `\Users\<you>\Documents\Ableton\User Library\Presets\Max Audio Effect\`
-
-3. Restart Ableton Live. Your devices will appear in the browser under **User Library**.
+2. Restart Ableton Live. Your devices will appear in the browser under **User Library**.
 
 ## Development Workflow
 
