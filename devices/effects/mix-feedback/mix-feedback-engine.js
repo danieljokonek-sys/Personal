@@ -413,10 +413,14 @@ function outputFeedback() {
 
 function outputSpectralData(label, bands) {
 	// Send band RMS values to JSUI display as individual arguments
-	// Max's outlet doesn't pass arrays — must send each value separately
-	outlet(2, label,
-		bands[0].rmsDb, bands[1].rmsDb, bands[2].rmsDb,
-		bands[3].rmsDb, bands[4].rmsDb, bands[5].rmsDb);
+	var v0 = bands[0].rmsDb;
+	var v1 = bands[1].rmsDb;
+	var v2 = bands[2].rmsDb;
+	var v3 = bands[3].rmsDb;
+	var v4 = bands[4].rmsDb;
+	var v5 = bands[5].rmsDb;
+	post("Sending to JSUI: " + label + " " + v0.toFixed(1) + " " + v1.toFixed(1) + " " + v2.toFixed(1) + " " + v3.toFixed(1) + " " + v4.toFixed(1) + " " + v5.toFixed(1) + "\n");
+	outlet(2, label, v0, v1, v2, v3, v4, v5);
 }
 
 // ─── Full Analysis Shortcut ─────────────────────────────────────────
