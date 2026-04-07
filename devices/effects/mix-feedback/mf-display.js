@@ -302,6 +302,10 @@ function drawStatusCompact(x, y, w, h) {
 // ─── Message Handlers ───────────────────────────────────────────────
 
 function reference() {
+	post("JSUI got 'reference' args=" + arguments.length + "\n");
+	for (var j = 0; j < arguments.length; j++) {
+		post("  arg[" + j + "]=" + arguments[j] + "\n");
+	}
 	if (arguments.length >= 6) {
 		for (var i = 0; i < 6; i++) {
 			refBands[i] = arguments[i];
@@ -320,6 +324,7 @@ function mix() {
 }
 
 function set_score(val) {
+	post("JSUI got 'set_score': " + val + "\n");
 	score = val;
 	mgraphics.redraw();
 }
@@ -345,6 +350,7 @@ function set_scanning(val) {
 }
 
 function set_working(val) {
+	post("JSUI got 'set_working': " + val + "\n");
 	working = val ? true : false;
 	if (!working) {
 		progress = 0;
@@ -362,6 +368,13 @@ function set_progress(val) {
 function set_progress_label(text) {
 	progressLabel = text;
 	mgraphics.redraw();
+}
+
+function anything() {
+	post("JSUI got unknown message: " + messagename + " args=" + arguments.length + "\n");
+	for (var i = 0; i < arguments.length; i++) {
+		post("  arg[" + i + "]=" + arguments[i] + "\n");
+	}
 }
 
 function bang() {
