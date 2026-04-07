@@ -196,6 +196,7 @@ em { font-style: italic; }
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 1.5rem;
 }
 .nav-mark { display: flex; align-items: center; }
 .nav-name {
@@ -1165,15 +1166,18 @@ em { font-style: italic; }
   .service-list,
   .service-footnote { grid-column: span 1; }
   .hero-bg-mark { display: none; }
-  .nav-links { gap: 1.5rem; }
-  .nav-links a { font-size: 0.72rem; }
+  .nav-links { gap: 1.25rem; }
+  .nav-links a { font-size: 0.65rem; letter-spacing: 0.1em; }
+  .nav-name { font-size: 0.65rem; letter-spacing: 0.1em; }
   .about-quote { font-size: clamp(1.2rem, 4vw, 1.8rem); }
   .about-spread { padding: 0 var(--pad-x); }
   .about-photo-col { max-width: 100%; }
 }
 
 @media (max-width: 440px) {
-  .nav-links { gap: 1rem; }
+  .nav-links { gap: 0.75rem; }
+  .nav-links a { font-size: 0.6rem; letter-spacing: 0.08em; }
+  .nav-name { font-size: 0.6rem; letter-spacing: 0.08em; }
   .additional-card { padding: 1.5rem; }
   .service-row { padding: 2rem 0; }
   .vid-modal-close { top: -2.5rem; }
