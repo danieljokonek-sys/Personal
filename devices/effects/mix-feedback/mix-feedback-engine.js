@@ -62,10 +62,29 @@ var liveAnalysis = {
  */
 function analyze_references() {
 	post("Analyzing reference tracks...\n");
+	sendToUI("set_working", 1);
+	sendToUI("set_progress_label", "Analyzing references");
+	sendToUI("set_progress", 0);
 	sendToUI("status", "Analyzing references...");
+
+	// Count loaded buffers first
+	var loadedCount = 0;
+	for (var c = 0; c < 5; c++) {
+		var testBuf = new Buffer(bufferNames[c]);
+		if (testBuf && testBuf.framecount() > 0) loadedCount++;
+	}
+
+	if (loadedCount === 0) {
+		post("No reference tracks loaded. Load audio into ref1-ref5 buffers.\n");
+		sendToUI("set_working", 0);
+		sendToUI("status", "No references loaded");
+		return;
+	}
 
 	var count = 0;
 	for (var i = 0; i < 5; i++) {
+		sendToUI("set_progress", (i / 5));
+		sendToUI("status", "Analyzing ref " + (i + 1) + " of 5...");
 		var profile = analyzeReference(i);
 		if (profile) {
 			count++;
@@ -75,11 +94,8 @@ function analyze_references() {
 		}
 	}
 
-	if (count === 0) {
-		post("No reference tracks loaded. Load audio into ref1-ref5 buffers.\n");
-		sendToUI("status", "No references loaded");
-		return;
-	}
+	sendToUI("set_progress", 0.9);
+	sendToUI("status", "Building composite profile...");
 
 	var composite = buildComposite();
 	post("Composite profile built from " + count + " references.\n");
@@ -90,6 +106,8 @@ function analyze_references() {
 	// Send spectral profile to display
 	outputSpectralData("reference", composite.bands);
 
+	sendToUI("set_progress", 1.0);
+	sendToUI("set_working", 0);
 	sendToUI("status", "References analyzed (" + count + " tracks)");
 	sendToUI("set_ref_count", count);
 }
@@ -100,23 +118,37 @@ function analyze_references() {
  */
 function analyze_mix() {
 	post("Analyzing mix...\n");
+	sendToUI("set_working", 1);
+	sendToUI("set_progress_label", "Analyzing mix");
+	sendToUI("set_progress", 0);
 	sendToUI("status", "Analyzing mix...");
 
 	var audio = readBuffer(liveAnalysis.captureBuffer);
 	if (!audio) {
 		post("Mix capture buffer is empty. Record your mix first.\n");
+		sendToUI("set_working", 0);
 		sendToUI("status", "No mix audio captured");
 		return;
 	}
 
 	// Mono analysis
+	sendToUI("set_progress", 0.1);
+	sendToUI("status", "Converting to mono...");
 	var mono = new Array(audio.frames);
 	for (var i = 0; i < audio.frames; i++) {
 		mono[i] = (audio.left[i] + audio.right[i]) * 0.5;
 	}
 
+	sendToUI("set_progress", 0.2);
+	sendToUI("status", "Extracting spectral features...");
 	var features = extractFeatures(mono, audio.sampleRate, 0.1);
+
+	sendToUI("set_progress", 0.5);
+	sendToUI("status", "Analyzing stereo field...");
 	var stereo = extractStereoFeatures(audio.left, audio.right, audio.sampleRate);
+
+	sendToUI("set_progress", 0.8);
+	sendToUI("status", "Detecting transients...");
 	var transients = extractTransients(mono, audio.sampleRate);
 
 	// Build mix profile in same shape as composite reference
@@ -142,8 +174,12 @@ function analyze_mix() {
 	post("  Stereo width: " + Math.round(stereo.stereoWidth * 100) + "%\n");
 
 	// Send spectral to display
+	sendToUI("set_progress", 0.95);
+	sendToUI("status", "Generating results...");
 	outputSpectralData("mix", features.bands);
 
+	sendToUI("set_progress", 1.0);
+	sendToUI("set_working", 0);
 	sendToUI("status", "Mix analyzed");
 
 	// Auto-compare if references are loaded

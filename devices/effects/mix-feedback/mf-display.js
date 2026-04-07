@@ -3,9 +3,9 @@
  * Mix Feedback Device — Compact JSUI Display
  *
  * Horizontal layout designed to fit within Ableton's device view height limit.
- * Layout: [Score | Spectrum Bars | Status] — all in one ~100px tall strip.
+ * Layout: [Score | Spectrum Bars | Status + Progress] — all in one ~100px tall strip.
  *
- * Loaded by [jsui @filename mf-display.js @size 580 100]
+ * Loaded by [jsui @filename mf-display.js @size 780 100]
  */
 
 mgraphics.init();
@@ -21,6 +21,10 @@ var statusText = "Load references to begin";
 var refCount = 0;
 var issueCount = 0;
 var scanning = false;
+var working = false;
+var progress = 0.0; // 0.0 to 1.0
+var progressLabel = "";
+var progressAnim = 0; // for animated dots
 
 var BAND_NAMES = ["Sub", "Low", "Lo-Mid", "Mid", "Hi-Mid", "High"];
 
@@ -34,6 +38,8 @@ var DIM_TEXT = [0.5, 0.5, 0.55, 1.0];
 var GOOD_COLOR = [0.2, 0.8, 0.4, 1.0];
 var WARN_COLOR = [0.95, 0.75, 0.1, 1.0];
 var BAD_COLOR = [0.95, 0.25, 0.2, 1.0];
+var PROGRESS_BG = [0.2, 0.2, 0.22, 1.0];
+var PROGRESS_FG = [0.3, 0.65, 0.9, 1.0];
 
 // ─── Drawing ────────────────────────────────────────────────────────
 
@@ -46,7 +52,13 @@ function paint() {
 	mgraphics.rectangle(0, 0, width, height);
 	mgraphics.fill();
 
-	// Layout: [Score 70px] [Spectrum rest] [Status 140px]
+	// If working, show progress overlay
+	if (working) {
+		drawProgressOverlay(0, 0, width, height);
+		return;
+	}
+
+	// Normal layout: [Score 70px] [Spectrum rest] [Status 140px]
 	var scoreW = 70;
 	var statusW = 140;
 	var spectrumX = scoreW + 5;
@@ -57,8 +69,63 @@ function paint() {
 	drawStatusCompact(width - statusW, 0, statusW, height);
 }
 
+// ─── Progress Overlay ───────────────────────────────────────────────
+
+function drawProgressOverlay(x, y, w, h) {
+	// Dark overlay
+	mgraphics.set_source_rgba([0.1, 0.1, 0.12, 1.0]);
+	mgraphics.rectangle(x, y, w, h);
+	mgraphics.fill();
+
+	// Working label with animated dots
+	var dots = "";
+	for (var d = 0; d < (progressAnim % 4); d++) {
+		dots += ".";
+	}
+
+	mgraphics.set_source_rgba(PROGRESS_FG);
+	mgraphics.set_font_size(14);
+	mgraphics.move_to(x + w / 2 - 100, y + 30);
+	mgraphics.text_path(progressLabel + dots);
+	mgraphics.fill();
+
+	// Progress bar
+	var barX = x + 40;
+	var barY = y + 50;
+	var barW = w - 80;
+	var barH = 10;
+
+	// Background
+	mgraphics.set_source_rgba(PROGRESS_BG);
+	mgraphics.rectangle(barX, barY, barW, barH);
+	mgraphics.fill();
+
+	// Fill
+	if (progress > 0) {
+		mgraphics.set_source_rgba(PROGRESS_FG);
+		mgraphics.rectangle(barX, barY, barW * progress, barH);
+		mgraphics.fill();
+	}
+
+	// Percentage
+	var pct = Math.round(progress * 100);
+	mgraphics.set_source_rgba(TEXT_COLOR);
+	mgraphics.set_font_size(10);
+	mgraphics.move_to(x + w / 2 - 10, y + 78);
+	mgraphics.text_path(pct + "%");
+	mgraphics.fill();
+
+	// Status text below
+	mgraphics.set_source_rgba(DIM_TEXT);
+	mgraphics.set_font_size(8);
+	mgraphics.move_to(x + w / 2 - 60, y + 92);
+	mgraphics.text_path(statusText);
+	mgraphics.fill();
+}
+
+// ─── Score ──────────────────────────────────────────────────────────
+
 function drawScoreCompact(x, y, w, h) {
-	// Score section
 	mgraphics.set_source_rgba(GRID);
 	mgraphics.rectangle(x, y, w, h);
 	mgraphics.fill();
@@ -79,19 +146,17 @@ function drawScoreCompact(x, y, w, h) {
 		mgraphics.fill();
 	}
 
-	// Label
 	mgraphics.set_source_rgba(DIM_TEXT);
 	mgraphics.set_font_size(7);
 	mgraphics.move_to(x + 10, y + 12);
 	mgraphics.text_path("SCORE");
 	mgraphics.fill();
 
-	// Score bar at bottom
 	if (score >= 0) {
 		var scoreColor2 = score >= 80 ? GOOD_COLOR :
 		                  score >= 50 ? WARN_COLOR : BAD_COLOR;
 		var barY = y + h - 8;
-		mgraphics.set_source_rgba([0.2, 0.2, 0.22, 1.0]);
+		mgraphics.set_source_rgba(PROGRESS_BG);
 		mgraphics.rectangle(x + 4, barY, w - 8, 4);
 		mgraphics.fill();
 		mgraphics.set_source_rgba(scoreColor2);
@@ -99,13 +164,14 @@ function drawScoreCompact(x, y, w, h) {
 		mgraphics.fill();
 	}
 
-	// /100 label
 	mgraphics.set_source_rgba(DIM_TEXT);
 	mgraphics.set_font_size(8);
 	mgraphics.move_to(x + 14, y + 52);
 	mgraphics.text_path("/100");
 	mgraphics.fill();
 }
+
+// ─── Spectrum ───────────────────────────────────────────────────────
 
 function drawSpectrumCompact(x, y, w, h) {
 	var barCount = 6;
@@ -120,7 +186,6 @@ function drawSpectrumCompact(x, y, w, h) {
 	var dbMax = 0;
 	var dbRange = dbMax - dbMin;
 
-	// Title
 	mgraphics.set_source_rgba(TEXT_COLOR);
 	mgraphics.set_font_size(8);
 	mgraphics.move_to(x + 2, y + 10);
@@ -159,7 +224,6 @@ function drawSpectrumCompact(x, y, w, h) {
 	for (var i = 0; i < barCount; i++) {
 		var bx = x + barGap + i * (barGroupWidth + barGap);
 
-		// Reference bar
 		var refVal = Math.max(dbMin, Math.min(dbMax, refBands[i]));
 		var refH = Math.max(2, ((refVal - dbMin) / dbRange) * barAreaH);
 		var refY = y + topPad + barAreaH - refH;
@@ -167,7 +231,6 @@ function drawSpectrumCompact(x, y, w, h) {
 		mgraphics.rectangle(bx, refY, barWidth, refH);
 		mgraphics.fill();
 
-		// Mix bar
 		var mixVal = Math.max(dbMin, Math.min(dbMax, mixBands[i]));
 		var mixH = Math.max(2, ((mixVal - dbMin) / dbRange) * barAreaH);
 		var mixY = y + topPad + barAreaH - mixH;
@@ -175,7 +238,6 @@ function drawSpectrumCompact(x, y, w, h) {
 		mgraphics.rectangle(bx + barWidth + 2, mixY, barWidth, mixH);
 		mgraphics.fill();
 
-		// Delta
 		var delta = mixBands[i] - refBands[i];
 		if (Math.abs(delta) > 1.5 && refBands[i] > -48) {
 			var deltaColor = Math.abs(delta) > 5 ? BAD_COLOR :
@@ -188,7 +250,6 @@ function drawSpectrumCompact(x, y, w, h) {
 			mgraphics.fill();
 		}
 
-		// Band label
 		mgraphics.set_source_rgba(DIM_TEXT);
 		mgraphics.set_font_size(7);
 		mgraphics.move_to(bx, y + h - 4);
@@ -197,8 +258,9 @@ function drawSpectrumCompact(x, y, w, h) {
 	}
 }
 
+// ─── Status ─────────────────────────────────────────────────────────
+
 function drawStatusCompact(x, y, w, h) {
-	// Divider line
 	mgraphics.set_source_rgba(GRID);
 	mgraphics.set_line_width(1);
 	mgraphics.move_to(x, y + 4);
@@ -207,7 +269,6 @@ function drawStatusCompact(x, y, w, h) {
 
 	x += 8;
 
-	// Ref count
 	mgraphics.set_source_rgba(DIM_TEXT);
 	mgraphics.set_font_size(8);
 	mgraphics.move_to(x, y + 14);
@@ -215,14 +276,12 @@ function drawStatusCompact(x, y, w, h) {
 	mgraphics.text_path(refText);
 	mgraphics.fill();
 
-	// Status
 	mgraphics.set_source_rgba(TEXT_COLOR);
 	mgraphics.set_font_size(8);
 	mgraphics.move_to(x, y + 30);
 	mgraphics.text_path(statusText);
 	mgraphics.fill();
 
-	// Issue count
 	if (issueCount > 0) {
 		mgraphics.set_source_rgba(WARN_COLOR);
 		mgraphics.set_font_size(8);
@@ -231,7 +290,6 @@ function drawStatusCompact(x, y, w, h) {
 		mgraphics.fill();
 	}
 
-	// Scanning indicator
 	if (scanning) {
 		mgraphics.set_source_rgba(WARN_COLOR);
 		mgraphics.set_font_size(9);
@@ -283,6 +341,26 @@ function issues(val) {
 
 function set_scanning(val) {
 	scanning = val ? true : false;
+	mgraphics.redraw();
+}
+
+function set_working(val) {
+	working = val ? true : false;
+	if (!working) {
+		progress = 0;
+		progressLabel = "";
+	}
+	mgraphics.redraw();
+}
+
+function set_progress(val) {
+	progress = Math.max(0, Math.min(1, val));
+	progressAnim++;
+	mgraphics.redraw();
+}
+
+function set_progress_label(text) {
+	progressLabel = text;
 	mgraphics.redraw();
 }
 
