@@ -33,7 +33,8 @@ function BiquadBandpass(centerFreq, bandwidth, sampleRate) {
 	var w0 = 2.0 * Math.PI * centerFreq / sampleRate;
 	var cosw0 = Math.cos(w0);
 	var sinw0 = Math.sin(w0);
-	var alpha = sinw0 * Math.sinh(Math.LN2 / 2.0 * bandwidth * w0 / sinw0);
+	var sinhArg = Math.LN2 / 2.0 * bandwidth * w0 / sinw0;
+	var alpha = sinw0 * (Math.exp(sinhArg) - Math.exp(-sinhArg)) / 2.0;
 
 	// Bandpass filter coefficients (constant skirt gain, peak = Q)
 	this.b0 = alpha;
