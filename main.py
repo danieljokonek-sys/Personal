@@ -3,13 +3,17 @@
 Personal Communication Tracker — CLI entry point.
 
 Usage:
-    python main.py setup          # Initialize DB, authenticate Gmail
-    python main.py fetch          # Fetch new emails from Gmail
-    python main.py analyze        # Analyze unprocessed emails with Claude
-    python main.py digest         # Generate and send today's briefing
-    python main.py run            # Fetch + analyze + digest in one shot
-    python main.py status         # Show dashboard summary
-    python main.py schedule       # Run on recurring schedule (daemon mode)
+    python main.py setup              # Initialize DB, authenticate Gmail
+    python main.py fetch              # Fetch new emails from Gmail
+    python main.py analyze            # Analyze unprocessed emails with Claude
+    python main.py digest             # Generate and send today's briefing
+    python main.py run                # Daily run: inbox + rolling history pass
+    python main.py run-all            # Fetch + analyze + digest in one shot
+    python main.py organize inbox     # Organize recent inbox emails
+    python main.py organize history   # Rolling cleanup of older mail
+    python main.py setup-scheduler    # Create Windows scheduled task
+    python main.py status             # Show dashboard summary
+    python main.py schedule           # Run on recurring schedule (daemon mode)
     python main.py mark <table> <id> <status>  # Update item status
 
     # Chorus Crafters order tracking
@@ -22,6 +26,8 @@ Usage:
 """
 import json
 import logging
+import re
+import subprocess
 import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -496,8 +502,8 @@ def digest(digest_type):
     do_digest(config, digest_type)
 
 
-@cli.command()
-def run():
+@cli.command(name="run-all")
+def run_all():
     """Fetch emails + calendar, analyze, and send digest in one shot."""
     config = get_config()
     init_db()
@@ -513,6 +519,257 @@ def run():
     do_detect_follow_ups(config)
     console.print("[bold]Sending digest...[/bold]")
     do_digest(config)
+
+
+# ── Organize Commands ──────────────────────────────────────────────────────────
+
+@cli.group()
+def organize():
+    """Organize and clean up email by source."""
+    pass
+
+
+def _do_organize_inbox(config):
+    """Run the inbox organization pipeline."""
+    init_db()
+    console.print("[bold]Fetching inbox emails...[/bold]")
+    do_fetch(config)
+    console.print("[bold]Fetching calendar events...[/bold]")
+    do_fetch_calendar(config)
+    console.print("[bold]Analyzing with Claude...[/bold]")
+    do_analyze(config)
+    console.print("[bold]Applying Gmail labels...[/bold]")
+    do_apply_labels(config)
+    console.print("[bold]Detecting follow-ups needed...[/bold]")
+    do_detect_follow_ups(config)
+    console.print("[bold]Sending digest...[/bold]")
+    do_digest(config)
+    console.print("[green]Inbox organization complete.[/green]")
+
+
+def _do_organize_history(
+    config, *, all_mail=False, max_pages=3, model=None, delete_older_days=None, strict=False
+):
+    """Run a historical email pass: fetch older mail, analyze, and optionally delete."""
+    init_db()
+    entities = load_entities(config)
+    google_cfg = config.get("google", {})
+
+    # Use all-mail query if requested, otherwise default inbox
+    extra_query = "in:all" if all_mail else ""
+
+    clients = build_clients(config)
+    total_stored = 0
+    max_per_page = google_cfg.get("max_emails_per_fetch", 100)
+    effective_model = model or config.get("analysis", {}).get("model", "claude-opus-4-6")
+
+    console.print(f"[bold]History pass — model={effective_model}, pages={max_pages}, "
+                  f"all_mail={all_mail}, delete_older_days={delete_older_days}, strict={strict}[/bold]")
+
+    for client in clients:
+        try:
+            client.authenticate()
+        except Exception as e:
+            log.error(f"  Auth failed for {client.account_email}: {e}")
+            continue
+
+        for page in range(max_pages):
+            console.print(f"  {client.account_email} page {page + 1}/{max_pages}...")
+            try:
+                emails = client.fetch_emails(
+                    max_results=max_per_page, extra_query=extra_query
+                )
+            except Exception as e:
+                log.error(f"  Fetch failed: {e}")
+                break
+
+            if not emails:
+                break
+
+            for email in emails:
+                email["is_sms_forward"] = _is_sms_forward(email, config)
+                combined = f"{email.get('subject', '')} {email.get('body_snippet', '')}"
+                entity_key = None
+                account_cfg = next(
+                    (a for a in config.get("accounts", []) if a["email"] == client.account_email),
+                    {},
+                )
+                primary = account_cfg.get("primary_entities", [])
+                candidates = [
+                    (k, entities[k]) for k in primary if k in entities
+                ] + [
+                    (k, v) for k, v in entities.items() if k not in primary
+                ]
+                for key, entity in candidates:
+                    if entity.matches_text(combined):
+                        entity_key = key
+                        break
+                email["entity_key"] = entity_key
+                store_email(email)
+                total_stored += 1
+
+    console.print(f"[green]Fetched {total_stored} historical emails.[/green]")
+
+    # Analyze with the specified model
+    analyzer = Analyzer(entities, model=effective_model)
+    unprocessed = get_unprocessed_emails(limit=max_pages * max_per_page)
+    if unprocessed:
+        batch_size = config.get("analysis", {}).get("batch_size", 20)
+        console.print(f"Analyzing {len(unprocessed)} emails with {effective_model}...")
+        for i in range(0, len(unprocessed), batch_size):
+            batch = unprocessed[i : i + batch_size]
+            try:
+                results = analyzer.analyze_batch(batch)
+            except Exception as e:
+                log.error(f"Analysis failed: {e}")
+                continue
+            for email in batch:
+                eid = email["id"]
+                if eid in results:
+                    store_extractions(eid, results[eid])
+                else:
+                    mark_email_processed(eid)
+
+    # Delete old emails if requested
+    if delete_older_days:
+        cutoff = datetime.now(timezone.utc) - timedelta(days=delete_older_days)
+        console.print(f"[bold]Deleting emails older than {delete_older_days} days "
+                      f"(strict={strict})...[/bold]")
+        from src.database import get_connection
+        conn = get_connection()
+        if strict:
+            # Strict mode: delete all old processed emails
+            conn.execute(
+                "DELETE FROM emails WHERE date < ? AND processed = 1",
+                (cutoff.isoformat(),),
+            )
+        else:
+            # Normal mode: only delete old emails with no extracted items
+            conn.execute(
+                """DELETE FROM emails WHERE date < ? AND processed = 1
+                   AND id NOT IN (SELECT DISTINCT email_id FROM agreements)
+                   AND id NOT IN (SELECT DISTINCT email_id FROM deadlines)
+                   AND id NOT IN (SELECT DISTINCT email_id FROM financial_items)
+                   AND id NOT IN (SELECT DISTINCT email_id FROM action_items)""",
+                (cutoff.isoformat(),),
+            )
+        deleted = conn.total_changes
+        conn.commit()
+        conn.close()
+        console.print(f"[green]Deleted {deleted} old emails.[/green]")
+
+    console.print("[green]History pass complete.[/green]")
+
+
+@organize.command(name="inbox")
+def organize_inbox():
+    """Organize recent inbox emails — fetch, analyze, label, digest."""
+    config = get_config()
+    _do_organize_inbox(config)
+
+
+@organize.command(name="history")
+@click.option("--all-mail", is_flag=True, help="Search all mail, not just inbox")
+@click.option("--max-pages", default=3, type=int, help="Max pages of emails to fetch")
+@click.option("--model", default=None, help="Claude model to use for analysis")
+@click.option("--delete-older-days", default=None, type=int,
+              help="Delete processed emails older than N days")
+@click.option("--strict", is_flag=True, help="Strict mode: delete all old processed emails")
+def organize_history(all_mail, max_pages, model, delete_older_days, strict):
+    """Process historical emails — rolling cleanup of older mail."""
+    config = get_config()
+    _do_organize_history(
+        config,
+        all_mail=all_mail,
+        max_pages=max_pages,
+        model=model,
+        delete_older_days=delete_older_days,
+        strict=strict,
+    )
+
+
+@cli.command()
+def run():
+    """Daily run: organize inbox + rolling history pass."""
+    config = get_config()
+    init_db()
+
+    console.print("[bold cyan]═══ Daily Run ═══[/bold cyan]\n")
+
+    console.print("[bold]Step 1/2: Organize Inbox[/bold]")
+    _do_organize_inbox(config)
+
+    console.print("\n[bold]Step 2/2: Rolling History Pass[/bold]")
+    _do_organize_history(
+        config,
+        all_mail=True,
+        max_pages=5,
+        model="claude-haiku-4-5-20251001",
+        delete_older_days=45,
+        strict=True,
+    )
+
+    console.print("\n[bold green]Daily run complete.[/bold green]")
+
+
+# ── Scheduler Setup ────────────────────────────────────────────────────────────
+
+@cli.command(name="setup-scheduler")
+def setup_scheduler():
+    """Create a Windows Task Scheduler job to run the email organizer daily."""
+    if sys.platform != "win32":
+        console.print("[red]This command is only supported on Windows.[/red]")
+        return
+
+    time_input = click.prompt(
+        "What time should the organizer run daily? (HH:MM, 24-hour format)",
+        default="08:00",
+    )
+
+    # Validate time format
+    if not re.match(r"^\d{2}:\d{2}$", time_input):
+        console.print("[red]Invalid time format. Use HH:MM (e.g., 08:00 or 14:30).[/red]")
+        return
+
+    task_name = "EmailCleanupBot"
+    project_dir = str(Path(__file__).resolve().parent)
+    python_exe = sys.executable
+    command = f'"{python_exe}" main.py organize inbox'
+
+    # Build schtasks command for current user (no admin required)
+    schtasks_cmd = [
+        "schtasks.exe", "/Create",
+        "/TN", task_name,
+        "/TR", f'cmd /c "cd /d {project_dir} && {command}"',
+        "/SC", "DAILY",
+        "/ST", time_input,
+        "/F",  # Force overwrite if task exists
+    ]
+
+    console.print(f"\n[bold]Creating scheduled task:[/bold]")
+    console.print(f"  Task name:    {task_name}")
+    console.print(f"  Schedule:     Daily at {time_input}")
+    console.print(f"  Command:      {command}")
+    console.print(f"  Working dir:  {project_dir}")
+    console.print()
+
+    try:
+        result = subprocess.run(
+            schtasks_cmd, capture_output=True, text=True, check=True
+        )
+        console.print(f"[green]Scheduled task '{task_name}' created successfully![/green]")
+        console.print(f"\n[bold]Schedule details:[/bold]")
+        console.print(f"  Runs daily at {time_input}")
+        console.print(f"  Executes: python main.py organize inbox")
+        console.print(f"  In directory: {project_dir}")
+        console.print(f"\n[dim]To verify: schtasks /Query /TN {task_name}[/dim]")
+        console.print(f"[dim]To delete:  schtasks /Delete /TN {task_name} /F[/dim]")
+    except subprocess.CalledProcessError as e:
+        console.print(f"[red]Failed to create scheduled task.[/red]")
+        if e.stderr:
+            console.print(f"[red]{e.stderr.strip()}[/red]")
+    except FileNotFoundError:
+        console.print("[red]schtasks.exe not found. Are you on Windows?[/red]")
 
 
 @cli.command()
