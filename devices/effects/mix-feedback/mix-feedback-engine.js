@@ -103,11 +103,6 @@ function analyze_references() {
 	post("  Target crest factor: " + composite.crestFactor.toFixed(1) + " dB\n");
 	post("  Target stereo width: " + Math.round(composite.stereoWidth * 100) + "%\n");
 
-	// Debug: show band values
-	for (var db = 0; db < composite.bands.length; db++) {
-		post("  Band " + composite.bands[db].name + ": " + composite.bands[db].rmsDb.toFixed(1) + " dB\n");
-	}
-
 	// Send spectral profile to display
 	outputSpectralData("reference", composite.bands);
 
@@ -412,26 +407,10 @@ function outputFeedback() {
 }
 
 function outputSpectralData(label, bands) {
-	try {
-		var v0 = bands[0].rmsDb;
-		var v1 = bands[1].rmsDb;
-		var v2 = bands[2].rmsDb;
-		var v3 = bands[3].rmsDb;
-		var v4 = bands[4].rmsDb;
-		var v5 = bands[5].rmsDb;
-		post("Sending spectral: " + label + " " + v0.toFixed(1) + " " + v1.toFixed(1) + " " + v2.toFixed(1) + " " + v3.toFixed(1) + " " + v4.toFixed(1) + " " + v5.toFixed(1) + "\n");
-		// Send each band value individually since JSUI may not handle 7 args
-		outlet(2, "set_" + label + "_band", 0, v0);
-		outlet(2, "set_" + label + "_band", 1, v1);
-		outlet(2, "set_" + label + "_band", 2, v2);
-		outlet(2, "set_" + label + "_band", 3, v3);
-		outlet(2, "set_" + label + "_band", 4, v4);
-		outlet(2, "set_" + label + "_band", 5, v5);
-		outlet(2, "redraw");
-		post("spectral outlet sent OK\n");
-	} catch(e) {
-		post("ERROR in outputSpectralData: " + e + "\n");
+	for (var i = 0; i < 6; i++) {
+		outlet(2, "set_" + label + "_band", i, bands[i].rmsDb);
 	}
+	outlet(2, "redraw");
 }
 
 // ─── Full Analysis Shortcut ─────────────────────────────────────────

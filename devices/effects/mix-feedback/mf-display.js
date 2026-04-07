@@ -316,12 +316,10 @@ function mix() {
 }
 
 function set_reference_band(idx, val) {
-	post("JSUI ref band[" + idx + "]=" + val + "\n");
 	if (idx >= 0 && idx < 6) refBands[idx] = val;
 }
 
 function set_mix_band(idx, val) {
-	post("JSUI mix band[" + idx + "]=" + val + "\n");
 	if (idx >= 0 && idx < 6) mixBands[idx] = val;
 }
 
@@ -330,7 +328,6 @@ function redraw() {
 }
 
 function set_score(val) {
-	post("JSUI got 'set_score': " + val + "\n");
 	score = val;
 	mgraphics.redraw();
 }
@@ -356,7 +353,6 @@ function set_scanning(val) {
 }
 
 function set_working(val) {
-	post("JSUI got 'set_working': " + val + "\n");
 	working = val ? true : false;
 	if (!working) {
 		progress = 0;
@@ -374,13 +370,6 @@ function set_progress(val) {
 function set_progress_label(text) {
 	progressLabel = text;
 	mgraphics.redraw();
-}
-
-function anything() {
-	post("JSUI got unknown message: " + messagename + " args=" + arguments.length + "\n");
-	for (var i = 0; i < arguments.length; i++) {
-		post("  arg[" + i + "]=" + arguments[i] + "\n");
-	}
 }
 
 function bang() {
