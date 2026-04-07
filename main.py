@@ -749,14 +749,11 @@ def setup_scheduler(run_time):
     python_exe = sys.executable
     task_name = "EmailCleanupBot"
 
-    # Build the schtasks command.
-    # schtasks has no working-directory flag, so we wrap the command in
-    # cmd /c with a cd so main.py is found at runtime.
-    task_cmd = f'cmd /c "cd /d {project_dir} && "{python_exe}" main.py run"'
+    # Build the schtasks command
     cmd = [
         "schtasks", "/create",
         "/tn", task_name,
-        "/tr", task_cmd,
+        "/tr", f'"{python_exe}" main.py run',
         "/sc", "daily",
         "/st", run_time,
         "/f",  # force overwrite if exists
