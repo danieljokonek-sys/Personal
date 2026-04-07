@@ -78,7 +78,7 @@ function FilterBank(sampleRate) {
 	this.sampleRate = sampleRate;
 	this.filters = [];
 	for (var i = 0; i < NUM_BANDS; i++) {
-		var bw = Math.log2(BANDS[i].hi / BANDS[i].lo);
+		var bw = Math.log(BANDS[i].hi / BANDS[i].lo) / Math.LN2;
 		this.filters.push(new BiquadBandpass(BANDS[i].center, bw, sampleRate));
 	}
 }

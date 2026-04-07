@@ -28,13 +28,20 @@ var bufferNames = ["ref1", "ref2", "ref3", "ref4", "ref5"];
  */
 function readBuffer(bufName) {
 	var buf = new Buffer(bufName);
-	if (!buf || !buf.framecount || buf.framecount() <= 0) {
+	if (!buf) {
+		post("Buffer '" + bufName + "' not found\n");
 		return null;
 	}
-
 	var frames = buf.framecount();
+	if (!frames || frames <= 0) {
+		post("Buffer '" + bufName + "' is empty (0 frames)\n");
+		return null;
+	}
+	post("Buffer '" + bufName + "': " + frames + " frames\n");
+
 	var channels = buf.channelcount();
-	var sr = buf.samplerate ? buf.samplerate() : 44100;
+	var sr = 44100;
+	try { sr = buf.samplerate(); } catch(e) { }
 
 	var left = new Array(frames);
 	var right = new Array(frames);
