@@ -110,6 +110,9 @@ function analyze_references() {
 	sendToUI("set_working", 0);
 	sendToUI("status", "References analyzed (" + count + " tracks)");
 	sendToUI("set_ref_count", count);
+
+	// Auto-compare if mix was already analyzed
+	tryCompare();
 }
 
 /**
@@ -182,8 +185,16 @@ function analyze_mix() {
 	sendToUI("set_working", 0);
 	sendToUI("status", "Mix analyzed");
 
-	// Auto-compare if references are loaded
-	if (getComposite()) {
+	// Auto-compare if both sides are ready
+	tryCompare();
+}
+
+/**
+ * Auto-compare if both reference profile and mix profile exist.
+ * Called at the end of both analyze_references and analyze_mix.
+ */
+function tryCompare() {
+	if (getComposite() && mixProfile) {
 		compare();
 	}
 }
@@ -194,11 +205,13 @@ function analyze_mix() {
 function compare() {
 	var composite = getComposite();
 	if (!composite) {
-		post("No reference profile. Analyze references first.\n");
+		post("No reference profile yet — analyze references first.\n");
+		sendToUI("status", "Waiting for references...");
 		return;
 	}
 	if (!mixProfile) {
-		post("No mix profile. Analyze your mix first.\n");
+		post("No mix profile yet — analyze your mix first.\n");
+		sendToUI("status", "Waiting for mix analysis...");
 		return;
 	}
 
