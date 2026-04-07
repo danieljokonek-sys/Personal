@@ -133,6 +133,8 @@ function extractFeatures(samples, sampleRate, windowSec) {
 	var globalRmsWindows = [];
 
 	// Process each window
+	// NOTE: do NOT reset the filter bank between windows —
+	// IIR filters need continuity to produce accurate band energy.
 	for (var w = 0; w < numWindows; w++) {
 		var start = w * windowSize;
 		var end = Math.min(start + windowSize, numSamples);
@@ -143,8 +145,6 @@ function extractFeatures(samples, sampleRate, windowSec) {
 		for (var b2 = 0; b2 < NUM_BANDS; b2++) {
 			windowBandRms.push(0.0);
 		}
-
-		bank.reset();
 
 		for (var s = start; s < end; s++) {
 			var sample = samples[s];

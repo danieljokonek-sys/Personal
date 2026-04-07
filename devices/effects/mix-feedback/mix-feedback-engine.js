@@ -103,6 +103,11 @@ function analyze_references() {
 	post("  Target crest factor: " + composite.crestFactor.toFixed(1) + " dB\n");
 	post("  Target stereo width: " + Math.round(composite.stereoWidth * 100) + "%\n");
 
+	// Debug: show band values
+	for (var db = 0; db < composite.bands.length; db++) {
+		post("  Band " + composite.bands[db].name + ": " + composite.bands[db].rmsDb.toFixed(1) + " dB\n");
+	}
+
 	// Send spectral profile to display
 	outputSpectralData("reference", composite.bands);
 
