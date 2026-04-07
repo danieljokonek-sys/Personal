@@ -716,7 +716,12 @@ def run():
 
 @cli.command(name="setup-scheduler")
 def setup_scheduler():
-    """Create a Windows Task Scheduler job to run the email organizer daily."""
+    """Create a Windows Task Scheduler job to run the email organizer daily.
+
+    The task runs at the specified time each day. If the computer is off or
+    asleep at that time, it will catch up and run as soon as possible when
+    the machine wakes or you log in (with a 1-minute delay).
+    """
     if sys.platform != "win32":
         console.print("[red]This command is only supported on Windows.[/red]")
         return
@@ -736,30 +741,86 @@ def setup_scheduler():
     python_exe = sys.executable
     command = f'"{python_exe}" main.py organize inbox'
 
-    # Build schtasks command for current user (no admin required)
-    schtasks_cmd = [
-        "schtasks.exe", "/Create",
-        "/TN", task_name,
-        "/TR", f'cmd /c "cd /d {project_dir} && {command}"',
-        "/SC", "DAILY",
-        "/ST", time_input,
-        "/F",  # Force overwrite if task exists
-    ]
+    # Use an XML task definition so we can set StartWhenAvailable (run on
+    # missed schedule) and add a logon trigger with a short delay as a
+    # catch-up mechanism.  schtasks /Create /XML supports this without
+    # requiring admin privileges for current-user tasks.
+    import getpass
+    username = getpass.getuser()
+
+    task_xml = f"""\
+<?xml version="1.0" encoding="UTF-16"?>
+<Task version="1.2" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">
+  <RegistrationInfo>
+    <Description>Daily email organizer — runs inbox cleanup at {time_input} or on next wake/login if missed.</Description>
+  </RegistrationInfo>
+  <Triggers>
+    <CalendarTrigger>
+      <StartBoundary>2024-01-01T{time_input}:00</StartBoundary>
+      <Enabled>true</Enabled>
+      <ScheduleByDay>
+        <DaysInterval>1</DaysInterval>
+      </ScheduleByDay>
+    </CalendarTrigger>
+    <LogonTrigger>
+      <Delay>PT1M</Delay>
+      <Enabled>true</Enabled>
+    </LogonTrigger>
+  </Triggers>
+  <Principals>
+    <Principal id="Author">
+      <LogonType>InteractiveToken</LogonType>
+      <RunLevel>LeastPrivilege</RunLevel>
+    </Principal>
+  </Principals>
+  <Settings>
+    <MultipleInstancesPolicy>IgnoreNew</MultipleInstancesPolicy>
+    <DisallowStartIfOnBatteries>false</DisallowStartIfOnBatteries>
+    <StopIfGoingOnBatteries>false</StopIfGoingOnBatteries>
+    <AllowHardTerminate>true</AllowHardTerminate>
+    <StartWhenAvailable>true</StartWhenAvailable>
+    <RunOnlyIfNetworkAvailable>true</RunOnlyIfNetworkAvailable>
+    <AllowStartOnDemand>true</AllowStartOnDemand>
+    <Enabled>true</Enabled>
+    <Hidden>false</Hidden>
+    <ExecutionTimeLimit>PT2H</ExecutionTimeLimit>
+  </Settings>
+  <Actions Context="Author">
+    <Exec>
+      <Command>cmd</Command>
+      <Arguments>/c "cd /d {project_dir} &amp;&amp; {command}"</Arguments>
+      <WorkingDirectory>{project_dir}</WorkingDirectory>
+    </Exec>
+  </Actions>
+</Task>"""
+
+    # Write XML to a temp file, create the task, then clean up
+    import tempfile
+    xml_path = Path(tempfile.gettempdir()) / "EmailCleanupBot_task.xml"
 
     console.print(f"\n[bold]Creating scheduled task:[/bold]")
-    console.print(f"  Task name:    {task_name}")
-    console.print(f"  Schedule:     Daily at {time_input}")
-    console.print(f"  Command:      {command}")
-    console.print(f"  Working dir:  {project_dir}")
+    console.print(f"  Task name:       {task_name}")
+    console.print(f"  Schedule:        Daily at {time_input}")
+    console.print(f"  Missed run:      Will catch up on next wake/login")
+    console.print(f"  Command:         {command}")
+    console.print(f"  Working dir:     {project_dir}")
     console.print()
 
     try:
+        xml_path.write_text(task_xml, encoding="utf-16")
+        schtasks_cmd = [
+            "schtasks.exe", "/Create",
+            "/TN", task_name,
+            "/XML", str(xml_path),
+            "/F",  # Force overwrite if task exists
+        ]
         result = subprocess.run(
             schtasks_cmd, capture_output=True, text=True, check=True
         )
         console.print(f"[green]Scheduled task '{task_name}' created successfully![/green]")
         console.print(f"\n[bold]Schedule details:[/bold]")
         console.print(f"  Runs daily at {time_input}")
+        console.print(f"  If missed, runs on next wake or login (1-min delay)")
         console.print(f"  Executes: python main.py organize inbox")
         console.print(f"  In directory: {project_dir}")
         console.print(f"\n[dim]To verify: schtasks /Query /TN {task_name}[/dim]")
@@ -770,6 +831,8 @@ def setup_scheduler():
             console.print(f"[red]{e.stderr.strip()}[/red]")
     except FileNotFoundError:
         console.print("[red]schtasks.exe not found. Are you on Windows?[/red]")
+    finally:
+        xml_path.unlink(missing_ok=True)
 
 
 @cli.command()
