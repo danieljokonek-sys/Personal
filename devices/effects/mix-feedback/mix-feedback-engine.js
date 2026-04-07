@@ -237,6 +237,10 @@ function compare() {
  */
 function scan_tracks(durationSec) {
 	if (!durationSec) durationSec = 4;
+	sendToUI("set_working", 1);
+	sendToUI("set_progress_label", "Scanning tracks");
+	sendToUI("set_progress", 0);
+	sendToUI("status", "Enumerating tracks...");
 	startScan(durationSec);
 }
 
@@ -458,4 +462,110 @@ function bang() {
 	} else {
 		get_status();
 	}
+}
+
+// ─── Save Report ────────────────────────────────────────────────────
+
+/**
+ * Save the full feedback report as a text file.
+ * Opens a file save dialog, writes all feedback lines.
+ */
+function save_report() {
+	if (!lastFeedback || lastFeedback.length === 0) {
+		post("No feedback to save. Run an analysis first.\n");
+		sendToUI("status", "No report to save");
+		return;
+	}
+
+	// Build the report text
+	var report = "";
+	var now = new Date();
+	var dateStr = now.getFullYear() + "-" +
+	             pad2(now.getMonth() + 1) + "-" +
+	             pad2(now.getDate()) + " " +
+	             pad2(now.getHours()) + ":" +
+	             pad2(now.getMinutes());
+
+	report += "MIX FEEDBACK REPORT\n";
+	report += "Generated: " + dateStr + "\n";
+	report += "========================================\n\n";
+
+	// Reference info
+	var refCount = getLoadedCount();
+	var composite = getComposite();
+	if (composite) {
+		report += "REFERENCE PROFILE (" + refCount + " tracks)\n";
+		report += "  Target RMS: " + composite.globalRmsDb.toFixed(1) + " dB\n";
+		report += "  Target Crest Factor: " + composite.crestFactor.toFixed(1) + " dB\n";
+		report += "  Target Stereo Width: " + Math.round(composite.stereoWidth * 100) + "%\n";
+		report += "  Target Dynamic Range: " + composite.dynamicRange.toFixed(1) + " dB\n";
+		report += "\n  Band Levels:\n";
+		for (var b = 0; b < composite.bands.length; b++) {
+			report += "    " + composite.bands[b].name + ": " +
+			          composite.bands[b].rmsDb.toFixed(1) + " dB RMS\n";
+		}
+		report += "\n";
+	}
+
+	// Mix info
+	if (mixProfile) {
+		report += "MIX PROFILE\n";
+		report += "  RMS: " + mixProfile.globalRmsDb.toFixed(1) + " dB\n";
+		report += "  Crest Factor: " + mixProfile.crestFactor.toFixed(1) + " dB\n";
+		report += "  Stereo Width: " + Math.round(mixProfile.stereoWidth * 100) + "%\n";
+		report += "  Dynamic Range: " + mixProfile.dynamicRange.toFixed(1) + " dB\n";
+		report += "\n  Band Levels:\n";
+		for (var b2 = 0; b2 < mixProfile.bands.length; b2++) {
+			report += "    " + mixProfile.bands[b2].name + ": " +
+			          mixProfile.bands[b2].rmsDb.toFixed(1) + " dB RMS\n";
+		}
+		report += "\n";
+	}
+
+	// Score
+	if (lastComparison) {
+		report += "MATCH SCORE: " + lastComparison.overallScore + "/100\n";
+		report += "Issues: " + lastComparison.criticalCount + " critical, " +
+		          lastComparison.warnCount + " warnings, " +
+		          lastComparison.suggestCount + " suggestions\n\n";
+	}
+
+	// Full feedback
+	report += "========================================\n";
+	report += "DETAILED FEEDBACK\n";
+	report += "========================================\n\n";
+	for (var i = 0; i < lastFeedback.length; i++) {
+		report += lastFeedback[i] + "\n";
+	}
+
+	// Save to file using Max's file dialog
+	var f = new File("mix-feedback-report.txt", "write");
+	if (f.isopen) {
+		f.writestring(report);
+		f.close();
+		post("Report saved: " + f.filename + "\n");
+		sendToUI("status", "Report saved");
+	} else {
+		// Try with dialog
+		var path = "";
+		try {
+			var dialog = new File("", "write", "TEXT");
+			if (dialog.isopen) {
+				dialog.writestring(report);
+				dialog.close();
+				post("Report saved: " + dialog.filename + "\n");
+				sendToUI("status", "Report saved");
+			} else {
+				post("Could not save report.\n");
+				sendToUI("status", "Save failed");
+			}
+		} catch(e) {
+			post("Error saving report: " + e + "\n");
+			sendToUI("status", "Save failed");
+		}
+	}
+}
+
+function pad2(n) {
+	return n < 10 ? "0" + n : "" + n;
 }

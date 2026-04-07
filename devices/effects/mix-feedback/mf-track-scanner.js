@@ -247,6 +247,8 @@ function startScan(captureDurationSec) {
 	trackProfiles = [];
 
 	post("Starting track scan: " + sessionTracks.length + " tracks\n");
+	sendToUI("status", "Scanning " + sessionTracks.length + " tracks...");
+	sendToUI("set_progress", 0.05);
 
 	// Signal to the patcher to start the scan sequence
 	// The patcher will call scanNextTrack() via a metro/delay chain
@@ -285,8 +287,12 @@ function scanNextTrack() {
 	var api = new LiveAPI(track.path);
 	api.set("solo", 1);
 
-	post("Scanning track " + (scanState.currentTrack + 1) + "/" +
-	     sessionTracks.length + ": " + track.name + "\n");
+	var trackNum = scanState.currentTrack + 1;
+	var totalTracks = sessionTracks.length;
+	post("Scanning track " + trackNum + "/" + totalTracks + ": " + track.name + "\n");
+
+	sendToUI("set_progress", trackNum / totalTracks);
+	sendToUI("status", "Scanning " + trackNum + "/" + totalTracks + ": " + track.name);
 
 	// Signal patcher to start capturing audio for this track
 	outlet(0, "scan_capture", scanState.currentTrack, track.name);
@@ -329,6 +335,10 @@ function finishScan() {
 
 	post("Track scan complete. Analyzed " + trackProfiles.length + " tracks.\n");
 
+	sendToUI("set_progress", 1.0);
+	sendToUI("set_working", 0);
+	sendToUI("status", "Scan complete — " + trackProfiles.length + " tracks analyzed");
+
 	// Signal patcher to generate feedback
 	outlet(0, "scan_complete", trackProfiles.length);
 }
@@ -355,6 +365,8 @@ function abortScan() {
 
 	scanState.scanning = false;
 	post("Scan aborted.\n");
+	sendToUI("set_working", 0);
+	sendToUI("status", "Scan aborted");
 	outlet(0, "scan_aborted");
 }
 
