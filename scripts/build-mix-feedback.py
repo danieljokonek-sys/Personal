@@ -156,26 +156,27 @@ def build_patcher():
                           outlettype=["", "", "", ""],
                           patching_rect=[200, 320, 180, 22]))
 
-    # ─── JSUI Display ───────────────────────────────────────────
+    # ─── JSUI Display (compact horizontal strip) ─────────────────
     boxes.append(make_box("obj-jsui", "jsui",
                           numinlets=1, numoutlets=1,
                           outlettype=[""],
-                          patching_rect=[200, 420, 580, 320],
+                          patching_rect=[200, 420, 780, 100],
                           presentation=1,
-                          presentation_rect=[5, 5, 580, 320],
+                          presentation_rect=[5, 25, 780, 100],
                           extra={"filename": "mf-display.js"}))
 
-    # ─── Feedback Text Display ───────────────────────────────────
+    # ─── Feedback Text Display (scrollable strip below JSUI) ─────
     boxes.append({"box": {
         "id": "obj-text",
         "maxclass": "textedit",
         "numinlets": 1,
         "numoutlets": 4,
         "outlettype": ["", "int", "", ""],
-        "patching_rect": [450, 320, 380, 260],
+        "patching_rect": [450, 320, 780, 35],
         "presentation": 1,
-        "presentation_rect": [5, 330, 580, 270],
+        "presentation_rect": [5, 128, 780, 35],
         "readonly": 1,
+        "scrollbar": 1,
         "wordwrap": 1,
         "fontsize": 10.0,
         "fontname": "Arial",
@@ -206,7 +207,7 @@ def build_patcher():
         boxes.append(make_live_button(
             btn_id, f"Ref {i}", f"Ref{i}", f"Load Ref {i}",
             px=180 + (i-1)*65, py=95,
-            pres_x=5 + (i-1)*55, pres_y=607, width=50, height=20))
+            pres_x=5 + (i-1)*55, pres_y=3, width=50, height=20))
 
         # Trigger → read message → buffer
         trig_id = f"obj-trig{i}"
@@ -227,7 +228,7 @@ def build_patcher():
     # ─── Analyze Mix Button ──────────────────────────────────────
     boxes.append(make_live_button(
         "obj-analyzebtn", "Analyze Mix", "Analyze", "Analyze Mix",
-        px=200, py=200, pres_x=285, pres_y=607, width=90, height=20))
+        px=200, py=200, pres_x=285, pres_y=3, width=90, height=20))
 
     # Analyze: first record mix, then analyze refs, then analyze mix
     boxes.append(make_box("obj-anal-t", "newobj", "t b b",
@@ -286,7 +287,7 @@ def build_patcher():
     # ─── Scan Tracks Button ──────────────────────────────────────
     boxes.append(make_live_button(
         "obj-scanbtn", "Scan Tracks", "Scan", "Scan Tracks",
-        px=330, py=200, pres_x=380, pres_y=607, width=90, height=20))
+        px=330, py=200, pres_x=380, pres_y=3, width=90, height=20))
 
     boxes.append(make_box("obj-scan-msg", "message", "scan_tracks 4",
                           numinlets=2, numoutlets=1,
@@ -348,7 +349,7 @@ def build_patcher():
             "boxanimatetime": 200,
             "enablehscroll": 1,
             "enablevscroll": 1,
-            "devicewidth": 600,
+            "devicewidth": 790,
             "description": "Mix Feedback - compare your mix against reference tracks.",
             "digest": "Personalized mix feedback based on your reference tracks.",
             "tags": "analysis mixing feedback",

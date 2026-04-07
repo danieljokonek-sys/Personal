@@ -1,17 +1,13 @@
 /**
  * mf-display.js
- * Mix Feedback Device — JSUI Display Component
+ * Mix Feedback Device — Compact JSUI Display
  *
- * Renders the visual feedback panel inside a [jsui] object:
- *   - Spectral comparison bars (reference vs mix per band)
- *   - Match score meter
- *   - Status indicator
- *   - Severity color coding
+ * Horizontal layout designed to fit within Ableton's device view height limit.
+ * Layout: [Score | Spectrum Bars | Status] — all in one ~100px tall strip.
  *
- * This file is loaded by [jsui @filename mf-display.js @size 580 320]
+ * Loaded by [jsui @filename mf-display.js @size 580 100]
  */
 
-// JSUI setup
 mgraphics.init();
 mgraphics.relative_coords = 0;
 mgraphics.autofill = 0;
@@ -20,20 +16,19 @@ mgraphics.autofill = 0;
 
 var refBands = [-60, -60, -60, -60, -60, -60];
 var mixBands = [-60, -60, -60, -60, -60, -60];
-var score = -1; // -1 = not yet analyzed
+var score = -1;
 var statusText = "Load references to begin";
 var refCount = 0;
 var issueCount = 0;
 var scanning = false;
 
 var BAND_NAMES = ["Sub", "Low", "Lo-Mid", "Mid", "Hi-Mid", "High"];
-var BAND_FREQS = ["20-60", "60-250", "250-1k", "1k-4k", "4k-8k", "8k-20k"];
 
 // Colors
 var BG = [0.12, 0.12, 0.14, 1.0];
 var GRID = [0.25, 0.25, 0.28, 1.0];
-var REF_COLOR = [0.3, 0.7, 0.9, 0.7];    // Blue for reference
-var MIX_COLOR = [0.9, 0.6, 0.2, 0.85];   // Orange for mix
+var REF_COLOR = [0.3, 0.7, 0.9, 0.7];
+var MIX_COLOR = [0.9, 0.6, 0.2, 0.85];
 var TEXT_COLOR = [0.85, 0.85, 0.85, 1.0];
 var DIM_TEXT = [0.5, 0.5, 0.55, 1.0];
 var GOOD_COLOR = [0.2, 0.8, 0.4, 1.0];
@@ -51,217 +46,216 @@ function paint() {
 	mgraphics.rectangle(0, 0, width, height);
 	mgraphics.fill();
 
-	// Title bar
-	drawTitleBar(width);
+	// Layout: [Score 70px] [Spectrum rest] [Status 140px]
+	var scoreW = 70;
+	var statusW = 140;
+	var spectrumX = scoreW + 5;
+	var spectrumW = width - scoreW - statusW - 10;
 
-	// Spectrum comparison
-	drawSpectrum(10, 40, width - 20, 180);
-
-	// Score meter
-	drawScore(10, 230, 120, 80);
-
-	// Status area
-	drawStatus(140, 230, width - 150, 80);
+	drawScoreCompact(0, 0, scoreW, height);
+	drawSpectrumCompact(spectrumX, 0, spectrumW, height);
+	drawStatusCompact(width - statusW, 0, statusW, height);
 }
 
-function drawTitleBar(width) {
-	mgraphics.set_source_rgba(TEXT_COLOR);
-	mgraphics.set_font_size(13);
-	mgraphics.move_to(10, 16);
-	mgraphics.text_path("MIX FEEDBACK");
-	mgraphics.fill();
-
-	mgraphics.set_source_rgba(DIM_TEXT);
-	mgraphics.set_font_size(10);
-	mgraphics.move_to(10, 30);
-	var refText = refCount > 0 ? refCount + " ref" + (refCount > 1 ? "s" : "") + " loaded" : "no references";
-	mgraphics.text_path(refText);
-	mgraphics.fill();
-
-	// Scanning indicator
-	if (scanning) {
-		mgraphics.set_source_rgba(WARN_COLOR);
-		mgraphics.set_font_size(10);
-		mgraphics.move_to(width - 100, 16);
-		mgraphics.text_path("SCANNING...");
-		mgraphics.fill();
-	}
-}
-
-function drawSpectrum(x, y, w, h) {
-	var barCount = 6;
-	var barGap = 8;
-	var barGroupWidth = (w - barGap * (barCount + 1)) / barCount;
-	var barWidth = barGroupWidth / 2 - 2;
-	var dbMin = -60;
-	var dbMax = 0;
-	var dbRange = dbMax - dbMin;
-
-	// Grid lines
-	mgraphics.set_source_rgba(GRID);
-	mgraphics.set_line_width(0.5);
-	for (var db = -50; db <= 0; db += 10) {
-		var gy = y + h - ((db - dbMin) / dbRange) * h;
-		mgraphics.move_to(x, gy);
-		mgraphics.line_to(x + w, gy);
-		mgraphics.stroke();
-
-		mgraphics.set_source_rgba(DIM_TEXT);
-		mgraphics.set_font_size(8);
-		mgraphics.move_to(x + w - 20, gy - 2);
-		mgraphics.text_path(db + "");
-		mgraphics.fill();
-		mgraphics.set_source_rgba(GRID);
-	}
-
-	// Draw bars for each band
-	for (var i = 0; i < barCount; i++) {
-		var bx = x + barGap + i * (barGroupWidth + barGap);
-
-		// Reference bar
-		var refH = Math.max(2, ((refBands[i] - dbMin) / dbRange) * h);
-		var refY = y + h - refH;
-		mgraphics.set_source_rgba(REF_COLOR);
-		mgraphics.rectangle(bx, refY, barWidth, refH);
-		mgraphics.fill();
-
-		// Mix bar
-		var mixH = Math.max(2, ((mixBands[i] - dbMin) / dbRange) * h);
-		var mixY = y + h - mixH;
-		mgraphics.set_source_rgba(MIX_COLOR);
-		mgraphics.rectangle(bx + barWidth + 2, mixY, barWidth, mixH);
-		mgraphics.fill();
-
-		// Delta indicator (colored line showing difference)
-		var delta = mixBands[i] - refBands[i];
-		if (Math.abs(delta) > 1.5 && refBands[i] > -55) {
-			var deltaColor = Math.abs(delta) > 5 ? BAD_COLOR :
-			                 Math.abs(delta) > 3 ? WARN_COLOR : GOOD_COLOR;
-			mgraphics.set_source_rgba(deltaColor);
-			mgraphics.set_font_size(9);
-			var sign = delta > 0 ? "+" : "";
-			mgraphics.move_to(bx + barWidth * 0.5, refY - 12);
-			mgraphics.text_path(sign + delta.toFixed(1));
-			mgraphics.fill();
-		}
-
-		// Band label
-		mgraphics.set_source_rgba(DIM_TEXT);
-		mgraphics.set_font_size(9);
-		mgraphics.move_to(bx, y + h + 12);
-		mgraphics.text_path(BAND_NAMES[i]);
-		mgraphics.fill();
-
-		mgraphics.set_font_size(7);
-		mgraphics.move_to(bx, y + h + 22);
-		mgraphics.text_path(BAND_FREQS[i]);
-		mgraphics.fill();
-	}
-
-	// Legend
-	mgraphics.set_source_rgba(REF_COLOR);
-	mgraphics.rectangle(x + w - 80, y - 5, 8, 8);
-	mgraphics.fill();
-	mgraphics.set_source_rgba(DIM_TEXT);
-	mgraphics.set_font_size(9);
-	mgraphics.move_to(x + w - 68, y + 3);
-	mgraphics.text_path("Ref");
-	mgraphics.fill();
-
-	mgraphics.set_source_rgba(MIX_COLOR);
-	mgraphics.rectangle(x + w - 40, y - 5, 8, 8);
-	mgraphics.fill();
-	mgraphics.set_source_rgba(DIM_TEXT);
-	mgraphics.move_to(x + w - 28, y + 3);
-	mgraphics.text_path("Mix");
-	mgraphics.fill();
-}
-
-function drawScore(x, y, w, h) {
-	// Score box
+function drawScoreCompact(x, y, w, h) {
+	// Score section
 	mgraphics.set_source_rgba(GRID);
 	mgraphics.rectangle(x, y, w, h);
 	mgraphics.fill();
 
 	if (score < 0) {
 		mgraphics.set_source_rgba(DIM_TEXT);
-		mgraphics.set_font_size(11);
-		mgraphics.move_to(x + 20, y + 40);
-		mgraphics.text_path("--/100");
+		mgraphics.set_font_size(10);
+		mgraphics.move_to(x + 15, y + 35);
+		mgraphics.text_path("--");
 		mgraphics.fill();
 	} else {
-		// Score number with color
 		var scoreColor = score >= 80 ? GOOD_COLOR :
 		                 score >= 50 ? WARN_COLOR : BAD_COLOR;
 		mgraphics.set_source_rgba(scoreColor);
-		mgraphics.set_font_size(28);
-		mgraphics.move_to(x + 12, y + 42);
+		mgraphics.set_font_size(24);
+		mgraphics.move_to(x + (score >= 100 ? 5 : score >= 10 ? 12 : 20), y + 40);
 		mgraphics.text_path(score + "");
 		mgraphics.fill();
+	}
 
-		mgraphics.set_source_rgba(DIM_TEXT);
-		mgraphics.set_font_size(11);
-		mgraphics.move_to(x + (score >= 100 ? 72 : score >= 10 ? 58 : 40), y + 42);
-		mgraphics.text_path("/100");
-		mgraphics.fill();
+	// Label
+	mgraphics.set_source_rgba(DIM_TEXT);
+	mgraphics.set_font_size(7);
+	mgraphics.move_to(x + 10, y + 12);
+	mgraphics.text_path("SCORE");
+	mgraphics.fill();
 
-		// Score bar
-		var barY = y + 55;
+	// Score bar at bottom
+	if (score >= 0) {
+		var scoreColor2 = score >= 80 ? GOOD_COLOR :
+		                  score >= 50 ? WARN_COLOR : BAD_COLOR;
+		var barY = y + h - 8;
 		mgraphics.set_source_rgba([0.2, 0.2, 0.22, 1.0]);
-		mgraphics.rectangle(x + 10, barY, w - 20, 6);
+		mgraphics.rectangle(x + 4, barY, w - 8, 4);
 		mgraphics.fill();
-		mgraphics.set_source_rgba(scoreColor);
-		mgraphics.rectangle(x + 10, barY, (w - 20) * (score / 100), 6);
+		mgraphics.set_source_rgba(scoreColor2);
+		mgraphics.rectangle(x + 4, barY, (w - 8) * (score / 100), 4);
+		mgraphics.fill();
+	}
+
+	// /100 label
+	mgraphics.set_source_rgba(DIM_TEXT);
+	mgraphics.set_font_size(8);
+	mgraphics.move_to(x + 14, y + 52);
+	mgraphics.text_path("/100");
+	mgraphics.fill();
+}
+
+function drawSpectrumCompact(x, y, w, h) {
+	var barCount = 6;
+	var barGap = 4;
+	var totalGaps = barGap * (barCount + 1);
+	var barGroupWidth = (w - totalGaps) / barCount;
+	var barWidth = (barGroupWidth - 2) / 2;
+	var topPad = 14;
+	var botPad = 16;
+	var barAreaH = h - topPad - botPad;
+	var dbMin = -50;
+	var dbMax = 0;
+	var dbRange = dbMax - dbMin;
+
+	// Title
+	mgraphics.set_source_rgba(TEXT_COLOR);
+	mgraphics.set_font_size(8);
+	mgraphics.move_to(x + 2, y + 10);
+	mgraphics.text_path("MIX FEEDBACK");
+	mgraphics.fill();
+
+	// Legend
+	mgraphics.set_source_rgba(REF_COLOR);
+	mgraphics.rectangle(x + w - 55, y + 3, 6, 6);
+	mgraphics.fill();
+	mgraphics.set_source_rgba(DIM_TEXT);
+	mgraphics.set_font_size(7);
+	mgraphics.move_to(x + w - 47, y + 9);
+	mgraphics.text_path("Ref");
+	mgraphics.fill();
+
+	mgraphics.set_source_rgba(MIX_COLOR);
+	mgraphics.rectangle(x + w - 25, y + 3, 6, 6);
+	mgraphics.fill();
+	mgraphics.set_source_rgba(DIM_TEXT);
+	mgraphics.move_to(x + w - 17, y + 9);
+	mgraphics.text_path("Mix");
+	mgraphics.fill();
+
+	// Grid lines
+	mgraphics.set_source_rgba(GRID);
+	mgraphics.set_line_width(0.5);
+	for (var db = -40; db <= 0; db += 20) {
+		var gy = y + topPad + barAreaH - ((db - dbMin) / dbRange) * barAreaH;
+		mgraphics.move_to(x, gy);
+		mgraphics.line_to(x + w, gy);
+		mgraphics.stroke();
+	}
+
+	// Bars
+	for (var i = 0; i < barCount; i++) {
+		var bx = x + barGap + i * (barGroupWidth + barGap);
+
+		// Reference bar
+		var refVal = Math.max(dbMin, Math.min(dbMax, refBands[i]));
+		var refH = Math.max(2, ((refVal - dbMin) / dbRange) * barAreaH);
+		var refY = y + topPad + barAreaH - refH;
+		mgraphics.set_source_rgba(REF_COLOR);
+		mgraphics.rectangle(bx, refY, barWidth, refH);
 		mgraphics.fill();
 
-		// Label
+		// Mix bar
+		var mixVal = Math.max(dbMin, Math.min(dbMax, mixBands[i]));
+		var mixH = Math.max(2, ((mixVal - dbMin) / dbRange) * barAreaH);
+		var mixY = y + topPad + barAreaH - mixH;
+		mgraphics.set_source_rgba(MIX_COLOR);
+		mgraphics.rectangle(bx + barWidth + 2, mixY, barWidth, mixH);
+		mgraphics.fill();
+
+		// Delta
+		var delta = mixBands[i] - refBands[i];
+		if (Math.abs(delta) > 1.5 && refBands[i] > -48) {
+			var deltaColor = Math.abs(delta) > 5 ? BAD_COLOR :
+			                 Math.abs(delta) > 3 ? WARN_COLOR : GOOD_COLOR;
+			mgraphics.set_source_rgba(deltaColor);
+			mgraphics.set_font_size(7);
+			var sign = delta > 0 ? "+" : "";
+			mgraphics.move_to(bx, Math.max(y + topPad + 8, refY - 4));
+			mgraphics.text_path(sign + delta.toFixed(1));
+			mgraphics.fill();
+		}
+
+		// Band label
 		mgraphics.set_source_rgba(DIM_TEXT);
-		mgraphics.set_font_size(9);
-		mgraphics.move_to(x + 10, y + 75);
-		mgraphics.text_path("MATCH SCORE");
+		mgraphics.set_font_size(7);
+		mgraphics.move_to(bx, y + h - 4);
+		mgraphics.text_path(BAND_NAMES[i]);
 		mgraphics.fill();
 	}
 }
 
-function drawStatus(x, y, w, h) {
+function drawStatusCompact(x, y, w, h) {
+	// Divider line
+	mgraphics.set_source_rgba(GRID);
+	mgraphics.set_line_width(1);
+	mgraphics.move_to(x, y + 4);
+	mgraphics.line_to(x, y + h - 4);
+	mgraphics.stroke();
+
+	x += 8;
+
+	// Ref count
 	mgraphics.set_source_rgba(DIM_TEXT);
-	mgraphics.set_font_size(10);
+	mgraphics.set_font_size(8);
 	mgraphics.move_to(x, y + 14);
+	var refText = refCount > 0 ? refCount + " ref" + (refCount > 1 ? "s" : "") + " loaded" : "no references";
+	mgraphics.text_path(refText);
+	mgraphics.fill();
+
+	// Status
+	mgraphics.set_source_rgba(TEXT_COLOR);
+	mgraphics.set_font_size(8);
+	mgraphics.move_to(x, y + 30);
 	mgraphics.text_path(statusText);
 	mgraphics.fill();
 
+	// Issue count
 	if (issueCount > 0) {
-		mgraphics.set_font_size(9);
-		mgraphics.move_to(x, y + 30);
+		mgraphics.set_source_rgba(WARN_COLOR);
+		mgraphics.set_font_size(8);
+		mgraphics.move_to(x, y + 46);
 		mgraphics.text_path(issueCount + " issue" + (issueCount !== 1 ? "s" : "") + " found");
+		mgraphics.fill();
+	}
+
+	// Scanning indicator
+	if (scanning) {
+		mgraphics.set_source_rgba(WARN_COLOR);
+		mgraphics.set_font_size(9);
+		mgraphics.move_to(x, y + 62);
+		mgraphics.text_path("SCANNING...");
 		mgraphics.fill();
 	}
 }
 
 // ─── Message Handlers ───────────────────────────────────────────────
 
-function reference(vals) {
-	// Receive reference band values: reference -25 -20 -18 -22 -30 -40
+function reference() {
 	if (arguments.length >= 6) {
 		for (var i = 0; i < 6; i++) {
 			refBands[i] = arguments[i];
-		}
-	} else if (vals && vals.length >= 6) {
-		for (var j = 0; j < 6; j++) {
-			refBands[j] = vals[j];
 		}
 	}
 	mgraphics.redraw();
 }
 
-function mix(vals) {
+function mix() {
 	if (arguments.length >= 6) {
 		for (var i = 0; i < 6; i++) {
 			mixBands[i] = arguments[i];
-		}
-	} else if (vals && vals.length >= 6) {
-		for (var j = 0; j < 6; j++) {
-			mixBands[j] = vals[j];
 		}
 	}
 	mgraphics.redraw();

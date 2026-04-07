@@ -38,7 +38,7 @@
 		"boxanimatetime": 200,
 		"enablehscroll": 1,
 		"enablevscroll": 1,
-		"devicewidth": 600,
+		"devicewidth": 790,
 		"description": "Mix Feedback - compare your mix against reference tracks.",
 		"digest": "Personalized mix feedback based on your reference tracks.",
 		"tags": "analysis mixing feedback",
@@ -284,15 +284,15 @@
 					"patching_rect": [
 						200,
 						420,
-						580,
-						320
+						780,
+						100
 					],
 					"presentation": 1,
 					"presentation_rect": [
 						5,
-						5,
-						580,
-						320
+						25,
+						780,
+						100
 					],
 					"filename": "mf-display.js"
 				}
@@ -312,17 +312,18 @@
 					"patching_rect": [
 						450,
 						320,
-						380,
-						260
+						780,
+						35
 					],
 					"presentation": 1,
 					"presentation_rect": [
 						5,
-						330,
-						580,
-						270
+						128,
+						780,
+						35
 					],
 					"readonly": 1,
+					"scrollbar": 1,
 					"wordwrap": 1,
 					"fontsize": 10.0,
 					"fontname": "Arial",
@@ -390,7 +391,7 @@
 					"presentation": 1,
 					"presentation_rect": [
 						5,
-						607,
+						3,
 						50,
 						20
 					],
@@ -468,7 +469,7 @@
 					"presentation": 1,
 					"presentation_rect": [
 						60,
-						607,
+						3,
 						50,
 						20
 					],
@@ -546,7 +547,7 @@
 					"presentation": 1,
 					"presentation_rect": [
 						115,
-						607,
+						3,
 						50,
 						20
 					],
@@ -624,7 +625,7 @@
 					"presentation": 1,
 					"presentation_rect": [
 						170,
-						607,
+						3,
 						50,
 						20
 					],
@@ -702,7 +703,7 @@
 					"presentation": 1,
 					"presentation_rect": [
 						225,
-						607,
+						3,
 						50,
 						20
 					],
@@ -780,7 +781,7 @@
 					"presentation": 1,
 					"presentation_rect": [
 						285,
-						607,
+						3,
 						90,
 						20
 					],
@@ -949,7 +950,7 @@
 					"presentation": 1,
 					"presentation_rect": [
 						380,
-						607,
+						3,
 						90,
 						20
 					],
