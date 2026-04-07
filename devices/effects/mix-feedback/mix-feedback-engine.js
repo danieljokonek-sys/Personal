@@ -41,6 +41,12 @@ var lastComparison = null;
 var lastTrackComparisons = [];
 var lastFeedback = [];
 
+// Helper: send status/score/etc to both outlet 3 (route) and outlet 2 (JSUI)
+function sendToUI(msg, val) {
+	outlet(3, msg, val);
+	outlet(2, msg, val);
+}
+
 var liveAnalysis = {
 	capturing: false,
 	captureBuffer: "mix_capture",
@@ -56,7 +62,7 @@ var liveAnalysis = {
  */
 function analyze_references() {
 	post("Analyzing reference tracks...\n");
-	outlet(3, "status", "Analyzing references...");
+	sendToUI("status", "Analyzing references...");
 
 	var count = 0;
 	for (var i = 0; i < 5; i++) {
@@ -71,7 +77,7 @@ function analyze_references() {
 
 	if (count === 0) {
 		post("No reference tracks loaded. Load audio into ref1-ref5 buffers.\n");
-		outlet(3, "status", "No references loaded");
+		sendToUI("status", "No references loaded");
 		return;
 	}
 
@@ -84,8 +90,8 @@ function analyze_references() {
 	// Send spectral profile to display
 	outputSpectralData("reference", composite.bands);
 
-	outlet(3, "status", "References analyzed (" + count + " tracks)");
-	outlet(3, "ref_count", count);
+	sendToUI("status", "References analyzed (" + count + " tracks)");
+	sendToUI("set_ref_count", count);
 }
 
 /**
@@ -94,12 +100,12 @@ function analyze_references() {
  */
 function analyze_mix() {
 	post("Analyzing mix...\n");
-	outlet(3, "status", "Analyzing mix...");
+	sendToUI("status", "Analyzing mix...");
 
 	var audio = readBuffer(liveAnalysis.captureBuffer);
 	if (!audio) {
 		post("Mix capture buffer is empty. Record your mix first.\n");
-		outlet(3, "status", "No mix audio captured");
+		sendToUI("status", "No mix audio captured");
 		return;
 	}
 
@@ -138,7 +144,7 @@ function analyze_mix() {
 	// Send spectral to display
 	outputSpectralData("mix", features.bands);
 
-	outlet(3, "status", "Mix analyzed");
+	sendToUI("status", "Mix analyzed");
 
 	// Auto-compare if references are loaded
 	if (getComposite()) {
@@ -161,15 +167,15 @@ function compare() {
 	}
 
 	post("Comparing mix to references...\n");
-	outlet(3, "status", "Comparing...");
+	sendToUI("status", "Comparing...");
 
 	lastComparison = compareMixToReference(mixProfile, composite);
 
 	post("  Score: " + lastComparison.overallScore + "/100\n");
 	post("  Issues: " + lastComparison.totalIssues + "\n");
 
-	outlet(3, "score", lastComparison.overallScore);
-	outlet(3, "issues", lastComparison.totalIssues);
+	sendToUI("set_score", lastComparison.overallScore);
+	sendToUI("issues", lastComparison.totalIssues);
 
 	// Generate and output feedback
 	outputFeedback();
@@ -327,16 +333,15 @@ function outputFeedback() {
 		outlet(1, "append", lastFeedback[i]);
 	}
 
-	outlet(3, "status", "Feedback ready (" + lastFeedback.length + " lines)");
+	sendToUI("status", "Feedback ready (" + lastFeedback.length + " lines)");
 }
 
 function outputSpectralData(label, bands) {
-	// Send band RMS values to multislider for visual display
-	var values = [];
-	for (var b = 0; b < bands.length; b++) {
-		values.push(bands[b].rmsDb);
-	}
-	outlet(2, label, values);
+	// Send band RMS values to JSUI display as individual arguments
+	// Max's outlet doesn't pass arrays — must send each value separately
+	outlet(2, label,
+		bands[0].rmsDb, bands[1].rmsDb, bands[2].rmsDb,
+		bands[3].rmsDb, bands[4].rmsDb, bands[5].rmsDb);
 }
 
 // ─── Full Analysis Shortcut ─────────────────────────────────────────
