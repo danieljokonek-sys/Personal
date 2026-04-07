@@ -206,6 +206,7 @@ em { font-style: italic; }
   text-transform: uppercase;
   color: var(--text-muted);
   transition: color 0.2s ease;
+  white-space: nowrap;
 }
 .nav-mark:hover .nav-name { color: var(--text); }
 
@@ -728,8 +729,7 @@ em { font-style: italic; }
   transform: translateX(6px);
   transition: opacity 0.3s ease, transform 0.3s ease;
 }
-.svc-item.is-open .svc-price,
-.svc-head:hover .svc-price {
+.svc-item.is-open .svc-price {
   opacity: 1;
   transform: translateX(0);
 }
