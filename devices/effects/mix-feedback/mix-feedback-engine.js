@@ -413,16 +413,22 @@ function outputFeedback() {
 
 function outputSpectralData(label, bands) {
 	try {
-		post("outputSpectralData called with label=" + label + " bands.length=" + bands.length + "\n");
 		var v0 = bands[0].rmsDb;
 		var v1 = bands[1].rmsDb;
 		var v2 = bands[2].rmsDb;
 		var v3 = bands[3].rmsDb;
 		var v4 = bands[4].rmsDb;
 		var v5 = bands[5].rmsDb;
-		post("Sending to JSUI: " + label + " " + v0.toFixed(1) + " " + v1.toFixed(1) + " " + v2.toFixed(1) + " " + v3.toFixed(1) + " " + v4.toFixed(1) + " " + v5.toFixed(1) + "\n");
-		outlet(2, label, v0, v1, v2, v3, v4, v5);
-		post("outlet sent OK\n");
+		post("Sending spectral: " + label + " " + v0.toFixed(1) + " " + v1.toFixed(1) + " " + v2.toFixed(1) + " " + v3.toFixed(1) + " " + v4.toFixed(1) + " " + v5.toFixed(1) + "\n");
+		// Send each band value individually since JSUI may not handle 7 args
+		outlet(2, "set_" + label + "_band", 0, v0);
+		outlet(2, "set_" + label + "_band", 1, v1);
+		outlet(2, "set_" + label + "_band", 2, v2);
+		outlet(2, "set_" + label + "_band", 3, v3);
+		outlet(2, "set_" + label + "_band", 4, v4);
+		outlet(2, "set_" + label + "_band", 5, v5);
+		outlet(2, "redraw");
+		post("spectral outlet sent OK\n");
 	} catch(e) {
 		post("ERROR in outputSpectralData: " + e + "\n");
 	}

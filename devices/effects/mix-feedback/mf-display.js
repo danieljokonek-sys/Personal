@@ -302,24 +302,30 @@ function drawStatusCompact(x, y, w, h) {
 // ─── Message Handlers ───────────────────────────────────────────────
 
 function reference() {
-	post("JSUI got 'reference' args=" + arguments.length + "\n");
-	for (var j = 0; j < arguments.length; j++) {
-		post("  arg[" + j + "]=" + arguments[j] + "\n");
-	}
 	if (arguments.length >= 6) {
-		for (var i = 0; i < 6; i++) {
-			refBands[i] = arguments[i];
-		}
+		for (var i = 0; i < 6; i++) refBands[i] = arguments[i];
 	}
 	mgraphics.redraw();
 }
 
 function mix() {
 	if (arguments.length >= 6) {
-		for (var i = 0; i < 6; i++) {
-			mixBands[i] = arguments[i];
-		}
+		for (var i = 0; i < 6; i++) mixBands[i] = arguments[i];
 	}
+	mgraphics.redraw();
+}
+
+function set_reference_band(idx, val) {
+	post("JSUI ref band[" + idx + "]=" + val + "\n");
+	if (idx >= 0 && idx < 6) refBands[idx] = val;
+}
+
+function set_mix_band(idx, val) {
+	post("JSUI mix band[" + idx + "]=" + val + "\n");
+	if (idx >= 0 && idx < 6) mixBands[idx] = val;
+}
+
+function redraw() {
 	mgraphics.redraw();
 }
 
