@@ -196,6 +196,8 @@ function analyze_mix() {
 function tryCompare() {
 	if (getComposite() && mixProfile) {
 		compare();
+		// Also try generating per-track feedback if scan data exists
+		generate_track_feedback();
 	}
 }
 
@@ -276,16 +278,31 @@ function track_captured(trackIndex) {
 
 /**
  * Generate per-track comparisons after scan is complete.
- * Called when scan_complete message is received.
+ * Called when scan_complete message is received, or auto-triggered
+ * when reference/mix analysis completes and track data is waiting.
  */
 function generate_track_feedback() {
 	var composite = getComposite();
-	if (!composite || !mixProfile) {
-		post("Need both reference and mix analysis before track feedback.\n");
+	var profiles = getTrackProfiles();
+	var hasTrackData = false;
+	for (var t = 0; t < profiles.length; t++) {
+		if (profiles[t]) { hasTrackData = true; break; }
+	}
+
+	if (!hasTrackData) {
+		// No track scan done yet — nothing to do
 		return;
 	}
 
-	var profiles = getTrackProfiles();
+	if (!composite || !mixProfile) {
+		post("Track scan data is ready — waiting for " +
+		     (!composite ? "reference analysis" : "mix analysis") +
+		     " before generating per-track feedback.\n");
+		sendToUI("status", "Track data ready — waiting for " +
+		         (!composite ? "references" : "mix analysis"));
+		return;
+	}
+
 	var tracks = getSessionTracks();
 	lastTrackComparisons = [];
 
