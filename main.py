@@ -7,9 +7,15 @@ Usage:
     python main.py fetch          # Fetch new emails from Gmail
     python main.py analyze        # Analyze unprocessed emails with Claude
     python main.py digest         # Generate and send today's briefing
-    python main.py run            # Fetch + analyze + digest in one shot
+    python main.py run            # Daily run: organize inbox + history cleanup
     python main.py status         # Show dashboard summary
     python main.py schedule       # Run on recurring schedule (daemon mode)
+
+    # Email organization
+    python main.py organize inbox                  # Fetch, analyze, label, digest
+    python main.py organize history                # Rolling historical cleanup
+    python main.py organize history --all-mail --max-pages 5 --strict
+    python main.py setup-scheduler                 # Create Windows daily task
     python main.py mark <table> <id> <status>  # Update item status
 
     # Chorus Crafters order tracking
@@ -498,7 +504,40 @@ def digest(digest_type):
 
 @cli.command()
 def run():
-    """Fetch emails + calendar, analyze, and send digest in one shot."""
+    """Daily run: organize inbox + rolling history cleanup.
+
+    This is the command the scheduler calls each day. It:
+      1. Organizes the inbox (fetch, analyze, label, follow-ups, digest)
+      2. Does a small rolling history pass (all-mail, 5 pages, strict mode,
+         deleting messages older than 45 days)
+    """
+    ctx = click.get_current_context()
+
+    console.print("[bold]Step 1/2 — Organizing inbox...[/bold]\n")
+    ctx.invoke(organize_inbox)
+
+    console.print("\n[bold]Step 2/2 — Rolling history cleanup...[/bold]\n")
+    ctx.invoke(
+        organize_history,
+        all_mail=True,
+        max_pages=5,
+        model="claude-haiku-4-5-20251001",
+        delete_older_days=45,
+        strict=True,
+    )
+
+
+# ── Organize ────────────────────────────────────────────────────────────────
+
+@cli.group()
+def organize():
+    """Organize and clean up email — inbox triage or historical sweep."""
+    pass
+
+
+@organize.command(name="inbox")
+def organize_inbox():
+    """Fetch new mail, analyze, label, detect follow-ups, and send digest."""
     config = get_config()
     init_db()
     console.print("[bold]Fetching emails from all accounts...[/bold]")
@@ -513,6 +552,245 @@ def run():
     do_detect_follow_ups(config)
     console.print("[bold]Sending digest...[/bold]")
     do_digest(config)
+    console.print("[green]Inbox organization complete.[/green]")
+
+
+@organize.command(name="history")
+@click.option("--all-mail", is_flag=True, default=False,
+              help="Scan All Mail instead of just the inbox")
+@click.option("--max-pages", default=10, type=int,
+              help="Maximum pages of history to process per run")
+@click.option("--model", "model", default=None,
+              help="Claude model to use for analysis (e.g. claude-haiku-4-5-20251001)")
+@click.option("--delete-older-days", default=None, type=int,
+              help="Auto-delete messages older than N days that are classified as junk/noise")
+@click.option("--strict", is_flag=True, default=False,
+              help="Strict mode: aggressively classify promotional/noise for deletion")
+def organize_history(all_mail, max_pages, model, delete_older_days, strict):
+    """Rolling historical cleanup — scan older mail, classify, and optionally purge.
+
+    \b
+    Examples:
+        python main.py organize history
+        python main.py organize history --all-mail --max-pages 5
+        python main.py organize history --all-mail --max-pages 5 --model claude-haiku-4-5-20251001 --delete-older-days 45 --strict
+    """
+    config = get_config()
+    init_db()
+
+    # Override model if provided
+    if model:
+        config.setdefault("analysis", {})["model"] = model
+
+    source = "All Mail" if all_mail else "Inbox"
+    console.print(f"[bold]History cleanup — scanning {source} (up to {max_pages} pages)...[/bold]")
+
+    entities = load_entities(config)
+    analysis_cfg = config.get("analysis", {})
+    analysis_model = analysis_cfg.get("model", "claude-opus-4-6")
+    batch_size = analysis_cfg.get("batch_size", 20)
+    google_cfg = config.get("google", {})
+    max_per_page = google_cfg.get("max_emails_per_fetch", 100)
+
+    clients = build_clients(config)
+    analyzer = Analyzer(entities, model=analysis_model)
+    total_scanned = 0
+    total_deleted = 0
+
+    for client in clients:
+        console.print(f"\n  Account: {client.account_email}")
+        try:
+            client.authenticate()
+        except Exception as e:
+            log.error(f"  Auth failed for {client.account_email}: {e}")
+            continue
+
+        # Determine query label
+        query_label = "in:all" if all_mail else "in:inbox"
+        if strict:
+            query_label += " -is:starred -is:important"
+
+        page = 0
+        page_token = None
+
+        while page < max_pages:
+            page += 1
+            console.print(f"    Page {page}/{max_pages}...")
+
+            try:
+                emails, page_token = client.fetch_emails_page(
+                    query=query_label,
+                    max_results=max_per_page,
+                    page_token=page_token,
+                )
+            except AttributeError:
+                # Fallback if fetch_emails_page is not yet implemented
+                console.print("[yellow]    fetch_emails_page not implemented — "
+                              "falling back to standard fetch.[/yellow]")
+                lookback_days = (delete_older_days or 90) * 2
+                since = datetime.now() - timedelta(days=lookback_days)
+                emails = client.fetch_emails(since=since, max_results=max_per_page * max_pages)
+                page_token = None
+                page = max_pages  # exit after this batch
+            except Exception as e:
+                log.error(f"    Fetch failed: {e}")
+                break
+
+            if not emails:
+                console.print("    [dim]No more messages.[/dim]")
+                break
+
+            total_scanned += len(emails)
+
+            # Store & analyze
+            for email in emails:
+                email["entity_key"] = None
+                store_email(email)
+
+            console.print(f"    Analyzing {len(emails)} messages...")
+            try:
+                for i in range(0, len(emails), batch_size):
+                    batch = emails[i : i + batch_size]
+                    results = analyzer.analyze_batch(batch)
+                    for email in batch:
+                        eid = email["id"]
+                        if eid in results:
+                            store_extractions(eid, results[eid])
+                            mark_email_processed(eid)
+            except Exception as e:
+                log.error(f"    Analysis failed: {e}")
+
+            # Delete old junk if requested
+            if delete_older_days:
+                cutoff = datetime.now() - timedelta(days=delete_older_days)
+                for email in emails:
+                    try:
+                        email_date = datetime.fromisoformat(email.get("date", ""))
+                        if email_date.tzinfo:
+                            email_date = email_date.replace(tzinfo=None)
+                    except Exception:
+                        continue
+
+                    if email_date >= cutoff:
+                        continue
+
+                    # Only delete if classified as noise/promotional
+                    eid = email["id"]
+                    classification = email.get("_classification", "")
+                    subject = (email.get("subject") or "").lower()
+                    noise_signals = [
+                        "unsubscribe" in (email.get("body_snippet") or "").lower(),
+                        "noreply" in (email.get("sender") or "").lower(),
+                        "no-reply" in (email.get("sender") or "").lower(),
+                        any(kw in subject for kw in [
+                            "sale", "off today", "% off", "limited time",
+                            "order confirmation", "shipping notification",
+                            "your receipt", "newsletter",
+                        ]),
+                    ]
+
+                    if strict:
+                        is_noise = sum(noise_signals) >= 1
+                    else:
+                        is_noise = sum(noise_signals) >= 2
+
+                    if is_noise:
+                        try:
+                            client.trash_message(eid)
+                            total_deleted += 1
+                        except AttributeError:
+                            console.print("[yellow]    trash_message not implemented — skipping deletion.[/yellow]")
+                            delete_older_days = None  # stop trying
+                            break
+                        except Exception as e:
+                            log.warning(f"    Failed to delete {eid}: {e}")
+
+            if not page_token:
+                break
+
+    console.print(f"\n[green]History cleanup complete — scanned {total_scanned} messages, "
+                  f"deleted {total_deleted} noise messages.[/green]")
+
+
+# ── Setup Scheduler (Windows Task Scheduler) ────────────────────────────────
+
+@cli.command(name="setup-scheduler")
+@click.option("--time", "run_time", default=None,
+              help="Time to run daily (HH:MM, 24-hour format). Default: 08:00")
+def setup_scheduler(run_time):
+    """Create a Windows Task Scheduler job to run the email organizer daily.
+
+    \b
+    This creates a scheduled task called \"EmailCleanupBot\" that runs
+    'python main.py run' every day at the specified time.
+
+    \b
+    Example:
+        python main.py setup-scheduler
+        python main.py setup-scheduler --time 07:30
+    """
+    import subprocess as sp
+
+    # Ask for time interactively if not provided via flag
+    if run_time is None:
+        run_time = click.prompt(
+            "What time should the daily cleanup run? (HH:MM, 24-hour)",
+            default="08:00",
+        )
+
+    # Validate time format
+    try:
+        datetime.strptime(run_time, "%H:%M")
+    except ValueError:
+        console.print(f"[red]Invalid time format: {run_time}. Use HH:MM (e.g. 08:00, 14:30).[/red]")
+        return
+
+    project_dir = str(Path(__file__).resolve().parent)
+    python_exe = sys.executable
+    task_name = "EmailCleanupBot"
+
+    # Build the schtasks command
+    cmd = [
+        "schtasks", "/create",
+        "/tn", task_name,
+        "/tr", f'"{python_exe}" main.py run',
+        "/sc", "daily",
+        "/st", run_time,
+        "/f",  # force overwrite if exists
+    ]
+
+    console.print(f"\n[bold]Creating scheduled task:[/bold]")
+    console.print(f"  Task name:    {task_name}")
+    console.print(f"  Schedule:     Daily at {run_time}")
+    console.print(f"  Command:      python main.py run")
+    console.print(f"  Working dir:  {project_dir}")
+    console.print()
+
+    try:
+        result = sp.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            cwd=project_dir,
+        )
+        if result.returncode == 0:
+            console.print("[green]Scheduled task created successfully![/green]\n")
+            console.print(f"  [bold]{task_name}[/bold] will run daily at [bold]{run_time}[/bold]")
+            console.print(f"  It executes: [dim]python main.py run[/dim]")
+            console.print(f"  Working directory: [dim]{project_dir}[/dim]")
+            console.print(f"\n  To verify:  [dim]schtasks /query /tn {task_name}[/dim]")
+            console.print(f"  To delete:  [dim]schtasks /delete /tn {task_name} /f[/dim]")
+            console.print(f"  To run now: [dim]schtasks /run /tn {task_name}[/dim]")
+        else:
+            console.print(f"[red]Failed to create scheduled task.[/red]")
+            if result.stderr:
+                console.print(f"[red]{result.stderr.strip()}[/red]")
+            if result.stdout:
+                console.print(f"[dim]{result.stdout.strip()}[/dim]")
+    except FileNotFoundError:
+        console.print("[red]schtasks.exe not found — this command requires Windows.[/red]")
+    except Exception as e:
+        console.print(f"[red]Error creating scheduled task: {e}[/red]")
 
 
 @cli.command()
