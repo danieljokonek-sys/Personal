@@ -1,7 +1,7 @@
 """
 Business entity definitions loaded from config.yaml.
 """
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Optional
 import yaml
 

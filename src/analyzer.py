@@ -169,7 +169,7 @@ class Analyzer:
         response = self.client.messages.create(
             model=self.model,
             max_tokens=16000,
-            thinking={"type": "adaptive"},
+            thinking={"type": "enabled", "budget_tokens": 8000},
             system=system_prompt,
             messages=[{"role": "user", "content": user_prompt}],
         )
@@ -261,8 +261,8 @@ Today is {date.today().isoformat()}. Write the full HTML email body."""
 
         response = self.client.messages.create(
             model=self.model,
-            max_tokens=8000,
-            thinking={"type": "adaptive"},
+            max_tokens=16000,
+            thinking={"type": "enabled", "budget_tokens": 6000},
             system=system_prompt,
             messages=[{"role": "user", "content": user_prompt}],
         )

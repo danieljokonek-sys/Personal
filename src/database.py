@@ -179,20 +179,28 @@ def _migrate(conn: sqlite3.Connection):
             updated_at TEXT DEFAULT CURRENT_TIMESTAMP
         );
         CREATE TABLE IF NOT EXISTS song_orders (
-            order_id TEXT PRIMARY KEY,
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            email_id TEXT,
             entity_key TEXT DEFAULT 'chorus_crafters',
             client_name TEXT,
             client_email TEXT,
             client_phone TEXT,
-            song_title TEXT,
-            occasion TEXT,
+            event_type TEXT,
             event_date TEXT,
-            delivery_deadline TEXT,
-            quote_amount REAL,
+            honoree_names TEXT,
+            event_notes TEXT,
+            song_style TEXT,
+            song_story TEXT,
+            reference_songs TEXT,
+            revisions_included INTEGER DEFAULT 2,
+            revisions_used INTEGER DEFAULT 0,
+            price REAL,
             deposit_amount REAL,
-            balance_due REAL,
             deposit_paid INTEGER DEFAULT 0,
+            deposit_date TEXT,
+            balance_due REAL,
             balance_paid INTEGER DEFAULT 0,
+            balance_date TEXT,
             demo_delivered INTEGER DEFAULT 0,
             demo_date TEXT,
             final_delivered INTEGER DEFAULT 0,
@@ -203,6 +211,61 @@ def _migrate(conn: sqlite3.Connection):
             updated_at TEXT DEFAULT CURRENT_TIMESTAMP
         );
     """)
+    # Migrate song_orders from old schema (order_id/occasion/quote_amount) to new schema
+    try:
+        so_cols = {row[1] for row in conn.execute("PRAGMA table_info(song_orders)")}
+        if "order_id" in so_cols:
+            conn.executescript("""
+                ALTER TABLE song_orders RENAME TO _song_orders_v1;
+                CREATE TABLE song_orders (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    email_id TEXT,
+                    entity_key TEXT DEFAULT 'chorus_crafters',
+                    client_name TEXT,
+                    client_email TEXT,
+                    client_phone TEXT,
+                    event_type TEXT,
+                    event_date TEXT,
+                    honoree_names TEXT,
+                    event_notes TEXT,
+                    song_style TEXT,
+                    song_story TEXT,
+                    reference_songs TEXT,
+                    revisions_included INTEGER DEFAULT 2,
+                    revisions_used INTEGER DEFAULT 0,
+                    price REAL,
+                    deposit_amount REAL,
+                    deposit_paid INTEGER DEFAULT 0,
+                    deposit_date TEXT,
+                    balance_due REAL,
+                    balance_paid INTEGER DEFAULT 0,
+                    balance_date TEXT,
+                    demo_delivered INTEGER DEFAULT 0,
+                    demo_date TEXT,
+                    final_delivered INTEGER DEFAULT 0,
+                    final_date TEXT,
+                    status TEXT DEFAULT 'inquiry',
+                    notes TEXT,
+                    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+                );
+                INSERT INTO song_orders (
+                    entity_key, client_name, client_email, client_phone,
+                    event_type, event_date, price, deposit_amount, balance_due,
+                    deposit_paid, balance_paid, demo_delivered, demo_date,
+                    final_delivered, final_date, status, notes, created_at, updated_at
+                )
+                SELECT
+                    entity_key, client_name, client_email, client_phone,
+                    occasion, event_date, quote_amount, deposit_amount, balance_due,
+                    deposit_paid, balance_paid, demo_delivered, demo_date,
+                    final_delivered, final_date, status, notes, created_at, updated_at
+                FROM _song_orders_v1;
+                DROP TABLE _song_orders_v1;
+            """)
+    except Exception:
+        pass
+
     # Indexes on new tables/columns (safe now that tables and columns exist)
     conn.executescript("""
         CREATE INDEX IF NOT EXISTS idx_emails_account ON emails(account_email);
