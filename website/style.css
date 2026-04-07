@@ -211,10 +211,10 @@ em { font-style: italic; }
 }
 .nav-mark:hover .nav-name { color: var(--text); }
 
-.nav-links { display: flex; gap: 2.5rem; align-items: center; line-height: 1; }
+.nav-links { display: flex; gap: 2.5rem; align-items: center; line-height: 1; justify-content: center; width: 100%; }
 .nav-links a {
   font-family: var(--font-mono);
-  font-size: 0.78rem;
+  font-size: 0.88rem;
   font-weight: 500;
   letter-spacing: 0.15em;
   text-transform: uppercase;
