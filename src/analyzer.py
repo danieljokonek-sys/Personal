@@ -169,7 +169,6 @@ class Analyzer:
         response = self.client.messages.create(
             model=self.model,
             max_tokens=16000,
-            thinking={"type": "adaptive"},
             system=system_prompt,
             messages=[{"role": "user", "content": user_prompt}],
         )
