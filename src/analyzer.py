@@ -262,13 +262,12 @@ Today is {date.today().isoformat()}. Write the full HTML email body."""
         response = self.client.messages.create(
             model=self.model,
             max_tokens=8000,
-            thinking={"type": "adaptive"},
             system=system_prompt,
             messages=[{"role": "user", "content": user_prompt}],
         )
 
-        for block in response.content:
-            if block.type == "text":
-                return block.text
+        # response.content is a list of blocks; find the text block
+        if response.content:
+            return response.content[0].text
 
-        return "<p>No digest generated.</p>"
+        return "<p>No digest generated — API returned empty response.</p>"
