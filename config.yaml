@@ -109,7 +109,7 @@ entities:
 google:
   credentials_file: "credentials/credentials.json"
   max_emails_per_fetch: 100
-  lookback_days: 30          # on first run, scan this many days back
+  lookback_days: 90          # on first run, scan this many days back
   calendar_days_ahead: 30    # how many days of upcoming events to pull
 
 # SMS forwarding

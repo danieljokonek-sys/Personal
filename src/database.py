@@ -134,6 +134,16 @@ def _migrate(conn: sqlite3.Connection):
         except Exception:
             pass
 
+    # Clear calendar events stored with old timezone-offset format (e.g. +00:00 or -07:00).
+    # UTC-naive ISO datetimes are exactly 19 chars: '2026-04-08T17:00:00'
+    # Anything longer has a timezone suffix and must be re-fetched.
+    try:
+        conn.execute(
+            "DELETE FROM calendar_events WHERE start_datetime IS NOT NULL AND length(start_datetime) > 19"
+        )
+    except Exception:
+        pass
+
     # Create calendar_events if it doesn't exist (older DBs won't have it)
     conn.executescript("""
         CREATE TABLE IF NOT EXISTS calendar_events (
@@ -278,12 +288,15 @@ def store_calendar_events(events: list[dict]):
 def get_upcoming_events(days_ahead: int = 14) -> list[dict]:
     """Return calendar events starting within the next N days."""
     conn = get_connection()
+    # Use strftime with 'T' separator to match the ISO format we store
+    # (datetime('now') uses a space separator which breaks string comparison)
     rows = conn.execute(
         """SELECT * FROM calendar_events
            WHERE status != 'cancelled'
              AND (
-               (start_datetime IS NOT NULL AND start_datetime >= datetime('now')
-                AND start_datetime <= datetime('now', '+' || ? || ' days'))
+               (start_datetime IS NOT NULL
+                AND start_datetime >= strftime('%Y-%m-%dT%H:%M:%S', 'now')
+                AND start_datetime <= strftime('%Y-%m-%dT%H:%M:%S', 'now', '+' || ? || ' days'))
                OR
                (start_date IS NOT NULL AND start_datetime IS NULL
                 AND start_date >= date('now')
@@ -689,8 +702,15 @@ def get_dashboard_summary() -> dict:
         "upcoming_events_7d": conn.execute(
             """SELECT COUNT(*) c FROM calendar_events
                WHERE status != 'cancelled'
-                 AND COALESCE(start_datetime, start_date) >= date('now')
-                 AND COALESCE(start_datetime, start_date) <= date('now', '+7 days')"""
+                 AND (
+                   (start_datetime IS NOT NULL
+                    AND start_datetime >= strftime('%Y-%m-%dT%H:%M:%S', 'now')
+                    AND start_datetime <= strftime('%Y-%m-%dT%H:%M:%S', 'now', '+7 days'))
+                   OR
+                   (start_date IS NOT NULL AND start_datetime IS NULL
+                    AND start_date >= date('now')
+                    AND start_date <= date('now', '+7 days'))
+                 )"""
         ).fetchone()["c"],
         "pending_tasks": conn.execute(
             "SELECT COUNT(*) c FROM tasks WHERE status = 'pending'"

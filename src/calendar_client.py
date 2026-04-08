@@ -58,15 +58,34 @@ class CalendarClient:
         events.sort(key=lambda e: e.get("start_datetime") or e.get("start_date") or "")
         return events
 
+    @staticmethod
+    def _to_utc_naive(dt_str: str | None) -> str | None:
+        """Convert a timezone-aware ISO datetime string to UTC naive (no offset).
+
+        SQLite string comparison only works reliably when all stored datetimes
+        are in the same format.  Google Calendar returns values like
+        '2026-04-08T17:00:00+00:00' or '2026-04-08T10:00:00-07:00'; we
+        convert them to plain UTC strings like '2026-04-08T17:00:00'.
+        """
+        if not dt_str:
+            return dt_str
+        try:
+            dt = datetime.fromisoformat(dt_str)
+            if dt.tzinfo is not None:
+                dt = dt.astimezone(timezone.utc).replace(tzinfo=None)
+            return dt.isoformat()
+        except (ValueError, TypeError):
+            return dt_str
+
     def _parse_event(self, item: dict, calendar: dict) -> dict | None:
         start = item.get("start", {})
         end = item.get("end", {})
 
         # all-day events use "date", timed events use "dateTime"
         start_date = start.get("date")
-        start_datetime = start.get("dateTime")
+        start_datetime = self._to_utc_naive(start.get("dateTime"))
         end_date = end.get("date")
-        end_datetime = end.get("dateTime")
+        end_datetime = self._to_utc_naive(end.get("dateTime"))
 
         return {
             "event_id": item["id"],
